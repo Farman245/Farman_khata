@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری سٹور</title>
+  <title>نیو قاری ہوزری سٹور - پرو</title>
   
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -12,10 +12,19 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
   <style>
-    body { margin: 0; background-color: #f4f7f6; font-family: sans-serif; }
-    .delete-btn { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+    body { margin: 0; background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 15px; boxShadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .btn { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; margin: 2px; }
+    .btn-blue { background: #1a73e8; color: white; }
+    .btn-green { background: #28a745; color: white; }
+    .btn-red { background: #dc3545; color: white; }
+    .btn-orange { background: #fd7e14; color: white; }
+    input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
+    .flex-row { display: flex; gap: 8px; }
   </style>
 </head>
 <body>
@@ -31,7 +40,6 @@
       appId: "1:838060218283:web:92df7394c10ea4212264ee"
     };
 
-    // فائر بیس شروع کریں
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
@@ -41,45 +49,26 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [activeTab, setActiveTab] = useState('orders'); 
+      const [activeTab, setActiveTab] = useState('orders');
       const [dataLoaded, setDataLoaded] = useState(false);
 
-      // ڈیٹا سٹیٹس
-      const [suppliers, setSuppliers] = useState([{ name: 'فاروق برادرز', totalBilled: 0, totalPaid: 0 }]);
+      // Data States
+      const [suppliers, setSuppliers] = useState([]);
       const [orders, setOrders] = useState([]);
       const [stock, setStock] = useState([]);
+      const [editingId, setEditingId] = useState(null);
 
-      const today = new Date().toISOString().split('T')[0];
-
-      const [orderSupplier, setOrderSupplier] = useState('');
-      const [orderItem, setOrderItem] = useState('');
-      const [orderQty, setOrderQty] = useState('');
-      const [orderRate, setOrderRate] = useState('');
-      const [orderDate, setOrderDate] = useState(today);
-
-      const [receiveOrderId, setReceiveOrderId] = useState('');
-      const [receiveQty, setReceiveQty] = useState('');
-
-      const [paymentSupplier, setPaymentSupplier] = useState('');
-      const [paymentAmount, setPaymentAmount] = useState('');
-      const [paymentDate, setPaymentDate] = useState(today);
-
-      // 1. لاگ ان چیک اور کلاؤڈ سے پرانا ڈیٹا منگوانا
       useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(currentUser => {
           setUser(currentUser);
           if(currentUser) {
-            // آن لائن گودام سے ڈیٹا نکالیں
             storeDataRef.get().then((doc) => {
               if (doc.exists) {
                 const data = doc.data();
-                if(data.suppliers) setSuppliers(data.suppliers);
-                if(data.orders) setOrders(data.orders);
-                if(data.stock) setStock(data.stock);
+                setSuppliers(data.suppliers || []);
+                setOrders(data.orders || []);
+                setStock(data.stock || []);
               }
-              setDataLoaded(true);
-            }).catch(error => {
-              console.log("ڈیٹا لوڈ ہونے میں مسئلہ:", error);
               setDataLoaded(true);
             });
           }
@@ -87,262 +76,143 @@
         return () => unsubscribe();
       }, []);
 
-      // 2. نیا ڈیٹا کلاؤڈ پر لائیو سیو کرنا (Auto Cloud Backup)
       useEffect(() => {
         if(dataLoaded && user) {
           storeDataRef.set({ suppliers, orders, stock });
         }
-      }, [suppliers, orders, stock, dataLoaded, user]);
+      }, [suppliers, orders, stock]);
 
+      // --- PDF Generator ---
+      const downloadPDF = (type, supName = "") => {
+        const doc = new jspdf.jsPDF();
+        doc.setFontSize(20);
+        doc.text("New Qaari Hosiery Store", 105, 15, { align: "center" });
+        doc.setFontSize(12);
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 22, { align: "center" });
 
-      const handleGuestLogin = async () => {
-        try { await auth.signInAnonymously(); } 
-        catch (error) { alert("انٹرنیٹ کنکشن چیک کریں۔"); }
+        if (type === 'ledger' && supName) {
+          doc.text(`Ledger Report: ${supName}`, 15, 30);
+          const sup = suppliers.find(s => s.name === supName);
+          const data = [
+            ["Total Billed", `${sup.totalBilled} Rs`],
+            ["Total Paid", `${sup.totalPaid} Rs`],
+            ["Balance", `${sup.totalBilled - sup.totalPaid} Rs`]
+          ];
+          doc.autoTable({ startY: 35, head: [['Description', 'Amount']], body: data });
+        } else if (type === 'stock') {
+          doc.text("Current Stock Report", 15, 30);
+          const data = stock.map(s => [s.name, s.qty]);
+          doc.autoTable({ startY: 35, head: [['Item Name', 'Quantity (Doz)']], body: data });
+        }
+
+        doc.save(`${type}_report.pdf`);
+        alert("پی ڈی ایف تیار ہے! اب آپ اسے واٹس ایپ پر شیئر کر سکتے ہیں۔");
       };
 
-      const handleLogout = async () => await auth.signOut();
-
-      // --- کام کے فنکشن ---
+      // --- Functions ---
       const handlePlaceOrder = (e) => {
         e.preventDefault();
-        if (!orderSupplier || !orderItem || !orderQty || !orderRate) return alert('تمام خانے پُر کریں!');
-
-        let currentSuppliers = [...suppliers];
-        if (!currentSuppliers.find(s => s.name === orderSupplier)) {
-          currentSuppliers.push({ name: orderSupplier, totalBilled: 0, totalPaid: 0 });
-          setSuppliers(currentSuppliers);
-        }
-
-        const newOrder = {
-          id: Date.now(),
-          supplier: orderSupplier,
-          item: orderItem,
-          orderedQty: parseInt(orderQty),
-          receivedQty: 0,
-          rate: parseInt(orderRate),
-          date: orderDate
+        const fd = new FormData(e.target);
+        const orderData = {
+          id: editingId || Date.now(),
+          date: fd.get('date'),
+          supplier: fd.get('supplier'),
+          item: fd.get('item'),
+          orderedQty: parseInt(fd.get('qty')),
+          rate: parseInt(fd.get('rate')),
+          receivedQty: 0
         };
-        
-        setOrders([newOrder, ...orders]);
-        alert('آرڈر بک ہو گیا اور آن لائن سیو ہو گیا!');
-        setOrderSupplier(''); setOrderItem(''); setOrderQty(''); setOrderRate(''); setOrderDate(today);
-      };
 
-      const handleDeleteOrder = (orderId) => {
-        if(!window.confirm('کیا آپ واقعی یہ آرڈر ڈیلیٹ کرنا چاہتے ہیں؟ کھاتے سے سارا حساب واپس ہو جائے گا۔')) return;
-        
-        const order = orders.find(o => o.id === orderId);
-        if(!order) return;
-
-        if(order.receivedQty > 0) {
-          const billAmount = order.receivedQty * order.rate;
-          setSuppliers(suppliers.map(s => 
-            s.name === order.supplier ? { ...s, totalBilled: s.totalBilled - billAmount } : s
-          ));
-          setStock(stock.map(p => 
-            p.name === order.item ? { ...p, qty: p.qty - order.receivedQty } : p
-          ));
-        }
-        setOrders(orders.filter(o => o.id !== orderId));
-      };
-
-      const handleReceiveStock = (e) => {
-        e.preventDefault();
-        const order = orders.find(o => o.id === parseInt(receiveOrderId));
-        if (!order) return alert('آرڈر منتخب کریں!');
-        
-        const qtyToReceive = parseInt(receiveQty);
-        const pendingQty = order.orderedQty - order.receivedQty;
-        if (qtyToReceive > pendingQty) return alert(`صرف ${pendingQty} کی مقدار باقی ہے!`);
-
-        const updatedOrders = orders.map(o => 
-          o.id === order.id ? { ...o, receivedQty: o.receivedQty + qtyToReceive } : o
-        );
-        setOrders(updatedOrders);
-
-        const billAmount = qtyToReceive * order.rate;
-        setSuppliers(suppliers.map(s => 
-          s.name === order.supplier ? { ...s, totalBilled: s.totalBilled + billAmount } : s
-        ));
-
-        let stockExists = stock.find(p => p.name === order.item);
-        if (stockExists) {
-          setStock(stock.map(p => p.name === order.item ? { ...p, qty: p.qty + qtyToReceive } : p));
+        if(editingId) {
+            setOrders(orders.map(o => o.id === editingId ? {...orderData, receivedQty: o.receivedQty} : o));
+            setEditingId(null);
         } else {
-          setStock([...stock, { name: order.item, qty: qtyToReceive }]);
+            setOrders([orderData, ...orders]);
+            if (!suppliers.find(s => s.name === orderData.supplier)) {
+                setSuppliers([...suppliers, { name: orderData.supplier, totalBilled: 0, totalPaid: 0 }]);
+            }
         }
-        alert('وصولی درج ہو گئی!');
-        setReceiveOrderId(''); setReceiveQty('');
+        e.target.reset();
       };
 
-      const handleMakePayment = (e) => {
-        e.preventDefault();
-        if (!paymentSupplier || !paymentAmount) return alert('سپلائر اور رقم درج کریں!');
-
-        setSuppliers(suppliers.map(s => 
-          s.name === paymentSupplier ? { ...s, totalPaid: s.totalPaid + parseInt(paymentAmount) } : s
-        ));
-        alert('پیمنٹ درج ہو گئی!');
-        setPaymentSupplier(''); setPaymentAmount(''); setPaymentDate(today);
-      };
-
-      const tabStyle = (tabName) => ({
-        flex: 1, padding: '12px 2px', cursor: 'pointer', fontWeight: 'bold', fontSize: '13px', border: 'none',
-        backgroundColor: activeTab === tabName ? '#3498db' : '#ecf0f1',
-        color: activeTab === tabName ? 'white' : '#2c3e50',
-        borderBottom: activeTab === tabName ? '3px solid #2980b9' : '3px solid transparent',
-      });
-
-      if (!dataLoaded && user) return <div style={{textAlign: 'center', marginTop: '50px', fontSize: '20px'}}>کلاؤڈ سے کھاتہ لوڈ ہو رہا ہے... ⏳</div>;
-
-      if (user) {
-        return (
-          <div style={{ maxWidth: '800px', margin: 'auto' }}>
-            <div style={{ backgroundColor: '#2c3e50', padding: '15px 20px', color: 'white', textAlign: 'center' }}>
-              <h2 style={{ margin: '0 0 5px 0', fontSize: '24px', color: '#f1c40f' }}>نیو قاری ہوزری سٹور</h2>
-              <p style={{ margin: '0 0 2px 0', fontSize: '13px', color: '#bdc3c7' }}>نزد مبارک مسجد، قائد اعظم مارکیٹ، فیصل آباد | فون: 0306-5378112</p>
-              <div style={{fontSize: '11px', color: '#2ecc71', marginTop: '5px'}}>✓ آن لائن بیک اپ ایکٹو</div>
-              <button onClick={handleLogout} style={{ marginTop: '10px', padding: '6px 15px', backgroundColor: '#e74c3c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>لاگ آؤٹ</button>
-            </div>
-
-            <div style={{ display: 'flex', width: '100%', borderBottom: '1px solid #ddd' }}>
-              <button style={tabStyle('orders')} onClick={() => setActiveTab('orders')}>آرڈرز / وصولی</button>
-              <button style={tabStyle('ledger')} onClick={() => setActiveTab('ledger')}>سپلائرز کا کھاتہ</button>
-              <button style={tabStyle('stock')} onClick={() => setActiveTab('stock')}>موجودہ گودام</button>
-            </div>
-
-            <div style={{ padding: '20px' }}>
-              {activeTab === 'orders' && (
-                <div>
-                  <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ marginTop: 0, color: '#2980b9', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>سپلائر کو نیا آرڈر دیں</h3>
-                    <form onSubmit={handlePlaceOrder} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      <input placeholder="سپلائر کا نام (مثلاً: فاروق برادرز)" value={orderSupplier} onChange={e => setOrderSupplier(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      <input placeholder="آئٹم کا نام (مثلاً: بنیان)" value={orderItem} onChange={e => setOrderItem(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <input type="number" placeholder="مقدار (درجن)" value={orderQty} onChange={e => setOrderQty(e.target.value)} style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                        <input type="number" placeholder="طے شدہ ریٹ (Rs)" value={orderRate} onChange={e => setOrderRate(e.target.value)} style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      </div>
-                      <button type="submit" style={{ padding: '12px', backgroundColor: '#2980b9', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>آرڈر سیو کریں</button>
-                    </form>
-                  </div>
-
-                  <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ marginTop: 0, color: '#27ae60', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>مال موصول کریں</h3>
-                    <form onSubmit={handleReceiveStock} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <select value={receiveOrderId} onChange={e => setReceiveOrderId(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required>
-                        <option value="">-- باقی ماندہ آرڈر منتخب کریں --</option>
-                        {orders.filter(o => o.orderedQty > o.receivedQty).map(o => (
-                          <option key={o.id} value={o.id}>
-                            {o.supplier} - {o.item} (بقایا مقدار: {o.orderedQty - o.receivedQty})
-                          </option>
-                        ))}
-                      </select>
-                      <input type="number" placeholder="کتنی مقدار آ گئی ہے؟" value={receiveQty} onChange={e => setReceiveQty(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      <button type="submit" style={{ padding: '12px', backgroundColor: '#27ae60', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>وصولی درج کریں</button>
-                    </form>
-                  </div>
-
-                  <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ marginTop: 0, color: '#2c3e50' }}>آرڈرز کی صورتحال</h3>
-                    {orders.length === 0 ? <p style={{color: '#7f8c8d'}}>کوئی آرڈر نہیں دیا گیا۔</p> : (
-                      <ul style={{ listStyle: 'none', padding: 0 }}>
-                        {orders.map(order => (
-                          <li key={order.id} style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: order.orderedQty === order.receivedQty ? '#e8f8f5' : '#fdf2e9', borderRadius: '5px', marginBottom: '5px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                              <strong style={{ fontSize: '16px' }}>{order.supplier} ({order.item})</strong>
-                              <span style={{ fontSize: '12px', color: '#7f8c8d' }}>{order.date}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '10px' }}>
-                              <span style={{ color: '#2980b9' }}>آرڈر: {order.orderedQty}</span>
-                              <span style={{ color: '#27ae60' }}>موصول: {order.receivedQty}</span>
-                              <span style={{ color: '#c0392b', fontWeight: 'bold' }}>بقایا: {order.orderedQty - order.receivedQty}</span>
-                            </div>
-                            <button className="delete-btn" onClick={() => handleDeleteOrder(order.id)}>ڈیلیٹ کریں 🗑️</button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'ledger' && (
-                <div>
-                  <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ marginTop: 0, color: '#8e44ad', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>سپلائر کو رقم ادا کریں</h3>
-                    <form onSubmit={handleMakePayment} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      <input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      <select value={paymentSupplier} onChange={e => setPaymentSupplier(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required>
-                        <option value="">-- سپلائر منتخب کریں --</option>
-                        {suppliers.map((s, idx) => (
-                          <option key={idx} value={s.name}>{s.name} (بقایا دینا ہے: {s.totalBilled - s.totalPaid} Rs)</option>
-                        ))}
-                      </select>
-                      <input type="number" placeholder="ادا کی گئی رقم (Rs)" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }} required />
-                      <button type="submit" style={{ padding: '12px', backgroundColor: '#8e44ad', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold' }}>پیمنٹ درج کریں</button>
-                    </form>
-                  </div>
-
-                  <div style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                    <h3 style={{ marginTop: 0, color: '#2c3e50' }}>سپلائرز کا مکمل حساب</h3>
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
-                      {suppliers.map((sup, idx) => (
-                        <li key={idx} style={{ padding: '15px', borderBottom: '1px solid #eee', backgroundColor: '#f9f9f9', marginBottom: '10px', borderRadius: '5px' }}>
-                          <strong style={{ fontSize: '18px', display: 'block', marginBottom: '8px' }}>{sup.name}</strong>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '5px' }}>
-                            <span>مجموعی بل (جو مال آیا):</span>
-                            <strong>{sup.totalBilled} Rs</strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '5px', color: '#27ae60' }}>
-                            <span>ادا کی گئی رقم:</span>
-                            <strong>{sup.totalPaid} Rs</strong>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #ddd', color: '#c0392b' }}>
-                            <span>موجودہ بقایا:</span>
-                            <strong>{sup.totalBilled - sup.totalPaid} Rs</strong>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'stock' && (
-                <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-                  <h3 style={{ marginTop: 0, color: '#e67e22', borderBottom: '2px solid #ecf0f1', paddingBottom: '10px' }}>دکان میں موجود مال</h3>
-                  {stock.length === 0 ? <p style={{color: '#7f8c8d'}}>گودام ابھی خالی ہے۔</p> : (
-                    <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ backgroundColor: '#f2f2f2' }}>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>آئٹم کا نام</th>
-                          <th style={{ padding: '10px', borderBottom: '2px solid #ddd' }}>موجودہ مقدار</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {stock.map((item, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                            <td style={{ padding: '10px' }}>{item.name}</td>
-                            <td style={{ padding: '10px', color: '#27ae60', fontWeight: 'bold', fontSize: '16px' }}>{item.qty}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      }
+      if (!user) return (
+        <div style={{ textAlign: 'center', marginTop: '100px' }}>
+          <h1>نیو قاری ہوزری سٹور</h1>
+          <button className="btn btn-green" onClick={() => auth.signInAnonymously()}>کھاتہ کھولیں</button>
+        </div>
+      );
 
       return (
-        <div style={{ padding: '20px', textAlign: 'center', marginTop: '50px' }}>
-          <h1 style={{ color: '#2c3e50' }}>نیو قاری ہوزری سٹور</h1>
-          <p style={{ color: '#7f8c8d' }}>لائف ٹائم کلاؤڈ کھاتہ</p>
-          <button onClick={handleGuestLogin} style={{ padding: '12px 24px', backgroundColor: '#34A853', color: 'white', border: 'none', borderRadius: '5px', fontSize: '16px', marginTop: '20px' }}>ایپ کھولیں</button>
+        <div style={{ maxWidth: '600px', margin: 'auto', padding: '10px' }}>
+          <div style={{ background: '#2c3e50', color: 'white', padding: '15px', textAlign: 'center', borderRadius: '0 0 15px 15px' }}>
+            <h2 style={{margin:0}}>نیو قاری ہوزری سٹور</h2>
+            <div style={{fontSize: '12px', opacity: 0.8}}>کلاؤڈ بیک اپ ایکٹو ✓</div>
+          </div>
+
+          <div className="flex-row" style={{ marginTop: '10px' }}>
+            <button style={{flex:1}} className={`btn ${activeTab==='orders'?'btn-blue':'btn-gray'}`} onClick={()=>setActiveTab('orders')}>آرڈر</button>
+            <button style={{flex:1}} className={`btn ${activeTab==='ledger'?'btn-blue':'btn-gray'}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
+            <button style={{flex:1}} className={`btn ${activeTab==='stock'?'btn-blue':'btn-gray'}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
+          </div>
+
+          {activeTab === 'orders' && (
+            <div>
+              <div className="card">
+                <h3>{editingId ? 'آرڈر ایڈٹ کریں' : 'نیا آرڈر درج کریں'}</h3>
+                <form onSubmit={handlePlaceOrder}>
+                  <input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
+                  <input name="supplier" placeholder="سپلائر کا نام" required />
+                  <input name="item" placeholder="آئٹم (بنیان، موزے وغیرہ)" required />
+                  <div className="flex-row">
+                    <input name="qty" type="number" placeholder="مقدار" required />
+                    <input name="rate" type="number" placeholder="ریٹ" required />
+                  </div>
+                  <button className="btn btn-green" type="submit">{editingId ? 'تبدیلی محفوظ کریں' : 'آرڈر سیو کریں'}</button>
+                </form>
+              </div>
+
+              {orders.map(o => (
+                <div className="card" key={o.id}>
+                  <div style={{display:'flex', justifyContent:'space-between'}}>
+                    <strong>{o.supplier} - {o.item}</strong>
+                    <small>{o.date}</small>
+                  </div>
+                  <p>آرڈر: {o.orderedQty} | ریٹ: {o.rate} | موصول: {o.receivedQty}</p>
+                  <button className="btn btn-orange" onClick={() => setEditingId(o.id)}>ایڈٹ</button>
+                  <button className="btn btn-red" onClick={() => setOrders(orders.filter(x => x.id !== o.id))}>حذف</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'ledger' && (
+            <div>
+              <button className="btn btn-blue" onClick={() => downloadPDF('ledger_all')}>پورے کھاتے کی PDF</button>
+              {suppliers.map((s, i) => (
+                <div className="card" key={i}>
+                  <h4>{s.name}</h4>
+                  <p>بل: {s.totalBilled} | ادا: {s.totalPaid}</p>
+                  <p><strong>بقایا: {s.totalBilled - s.totalPaid} Rs</strong></p>
+                  <button className="btn btn-green" onClick={() => downloadPDF('ledger', s.name)}>اس کا بل بنائیں</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'stock' && (
+            <div className="card">
+              <h3>موجودہ اسٹاک</h3>
+              <button className="btn btn-blue" onClick={() => downloadPDF('stock')}>اسٹاک لسٹ PDF</button>
+              <table style={{width:'100%', marginTop:'10px', textAlign:'right'}}>
+                <thead><tr><th>آئٹم</th><th>مقدار</th></tr></thead>
+                <tbody>
+                  {stock.map((st, i) => (
+                    <tr key={i}><td>{st.name}</td><td>{st.qty} Doz</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       );
     }
