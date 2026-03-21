@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - پرو</title>
+  <title>نیو قاری ہوزری - مکمل اسٹاک کنٹرول</title>
   
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -12,21 +12,24 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
   <style>
     body { margin: 0; background-color: #f4f7f6; font-family: sans-serif; }
     .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .btn { padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 3px; }
+    .btn { padding: 6px 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 2px; font-size: 12px; }
     .btn-blue { background: #3498db; color: white; }
     .btn-green { background: #27ae60; color: white; }
     .btn-red { background: #e74c3c; color: white; }
     .btn-orange { background: #f39c12; color: white; }
-    .btn-gray { background: #95a5a6; color: white; }
-    input, select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
+    input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
     .tab-btn { flex: 1; padding: 12px; border: none; background: #ecf0f1; font-weight: bold; }
     .active-tab { background: #3498db; color: white; border-bottom: 3px solid #2980b9; }
+    table { width: 100%; text-align: right; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid #eee; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+    .bg-green { background: #e8f5e9; color: #2e7d32; }
+    .bg-blue { background: #e3f2fd; color: #1565c0; }
+    .supplier-tag { font-size: 11px; color: #7f8c8d; display: block; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -51,12 +54,11 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [activeTab, setActiveTab] = useState('orders');
+      const [activeTab, setActiveTab] = useState('stock');
       const [dataLoaded, setDataLoaded] = useState(false);
       const [suppliers, setSuppliers] = useState([]);
       const [orders, setOrders] = useState([]);
       const [stock, setStock] = useState([]);
-      const [editingOrder, setEditingOrder] = useState(null);
 
       useEffect(() => {
         auth.onAuthStateChanged(u => {
@@ -79,98 +81,103 @@
         if(dataLoaded && user) storeDataRef.set({ suppliers, orders, stock });
       }, [suppliers, orders, stock]);
 
-      const downloadPDF = (supName) => {
-        const doc = new jspdf.jsPDF();
-        doc.text("New Qaari Hosiery Store - Ledger", 105, 15, { align: "center" });
-        const sup = suppliers.find(s => s.name === supName);
-        const data = [["Supplier Name", sup.name], ["Total Bill", sup.totalBilled], ["Paid Amount", sup.totalPaid], ["Balance Due", sup.totalBilled - sup.totalPaid]];
-        doc.autoTable({ startY: 25, body: data });
-        doc.save(`${supName}_khata.pdf`);
-      };
-
-      const handleAddOrder = (e) => {
-        e.preventDefault();
-        const f = new FormData(e.target);
-        const newOrderData = {
-          id: editingOrder ? editingOrder.id : Date.now(),
-          date: f.get('date'),
-          supplier: f.get('supplier'),
-          item: f.get('item'),
-          orderedQty: parseInt(f.get('qty')),
-          rate: parseInt(f.get('rate')),
-          receivedQty: editingOrder ? editingOrder.receivedQty : 0
-        };
-
-        if(editingOrder) {
-          setOrders(orders.map(o => o.id === editingOrder.id ? newOrderData : o));
-          setEditingOrder(null);
-        } else {
-          setOrders([newOrderData, ...orders]);
-          if(!suppliers.find(s => s.name === newOrderData.supplier)) {
-              setSuppliers([...suppliers, {name: newOrderData.supplier, totalBilled: 0, totalPaid: 0}]);
-          }
-        }
-        e.target.reset();
-      };
-
-      const receiveStock = (orderId) => {
-        const qtyStr = prompt("کتنی مقدار موصول ہوئی؟");
+      const handleStockAction = (itemKey, type) => {
+        const target = stock.find(s => s.id === itemKey);
+        const qtyStr = prompt(type === 'receive' ? `${target.name} (${target.supplier}) کی کتنی مقدار موصول ہوئی؟` : `${target.name} کتنی مقدار بیچی؟`);
         if(!qtyStr || isNaN(qtyStr)) return;
         const amount = parseInt(qtyStr);
         
-        setOrders(orders.map(o => {
-          if(o.id === orderId) {
-            const bill = amount * o.rate;
-            setSuppliers(suppliers.map(s => s.name === o.supplier ? {...s, totalBilled: s.totalBilled + bill} : s));
-            const existing = stock.find(st => st.name === o.item);
-            if(existing) setStock(stock.map(st => st.name === o.item ? {...st, qty: st.qty + amount} : st));
-            else setStock([...stock, {name: o.item, qty: amount}]);
-            return {...o, receivedQty: o.receivedQty + amount};
+        setStock(stock.map(st => {
+          if(st.id === itemKey) {
+            if(type === 'sell' && st.qty < amount) { alert("اسٹاک کم ہے!"); return st; }
+            return {
+              ...st, 
+              qty: type === 'receive' ? st.qty + amount : st.qty - amount,
+              sold: type === 'sell' ? (st.sold || 0) + amount : (st.sold || 0)
+            };
           }
-          return o;
+          return st;
         }));
+
+        if(type === 'receive') {
+            const rate = prompt("فی درجن ریٹ درج کریں:");
+            if(rate) {
+                const bill = amount * parseInt(rate);
+                setSuppliers(prev => prev.map(s => s.name === target.supplier ? {...s, totalBilled: s.totalBilled + bill} : s));
+                setOrders([{id: Date.now(), date: new Date().toISOString().split('T')[0], supplier: target.supplier, item: target.name, receivedQty: amount, rate: parseInt(rate)}, ...orders]);
+            }
+        }
+      };
+
+      const addNewStockItem = () => {
+          const name = prompt("آئٹم کا نام (مثلاً: بنیان وی آئی پی):");
+          const supplier = prompt("سپلائر کا نام (مثلاً: علی برادرز):");
+          if(name && supplier) {
+              setStock([...stock, { id: Date.now(), name, supplier, qty: 0, sold: 0 }]);
+              if(!suppliers.find(s => s.name === supplier)) {
+                  setSuppliers([...suppliers, {name: supplier, totalBilled: 0, totalPaid: 0}]);
+              }
+          }
       };
 
       if (!user) return <div style={{textAlign:'center', padding:'50px'}}><button className="btn btn-blue" onClick={()=>auth.signInAnonymously()}>کھاتہ کھولیں</button></div>;
 
       return (
-        <div style={{ maxWidth: '500px', margin: 'auto' }}>
+        <div style={{ maxWidth: '550px', margin: 'auto' }}>
           <div style={{background:'#2c3e50', color:'white', padding:'15px', textAlign:'center'}}>
             <h2 style={{margin:0}}>نیو قاری ہوزری سٹور</h2>
           </div>
+          
           <div style={{display:'flex'}}>
-            <button className={`tab-btn ${activeTab==='orders'?'active-tab':''}`} onClick={()=>setActiveTab('orders')}>آرڈرز</button>
+            <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک گودام</button>
+            <button className={`tab-btn ${activeTab==='orders'?'active-tab':''}`} onClick={()=>setActiveTab('orders')}>حالیہ انٹری</button>
             <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
-            <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
           </div>
 
           <div style={{padding:'10px'}}>
+            {activeTab === 'stock' && (
+              <div className="card">
+                <h3>گودام (آئٹم + سپلائر)</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>تفصیل آئٹم</th>
+                            <th>موجود</th>
+                            <th>بکا</th>
+                            <th>ایکشن</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {stock.map((st) => (
+                            <tr key={st.id}>
+                                <td>
+                                    <strong>{st.name}</strong>
+                                    <span className="supplier-tag">سپلائر: {st.supplier}</span>
+                                </td>
+                                <td><span className="badge bg-green">{st.qty}</span></td>
+                                <td><span className="badge bg-blue">{st.sold || 0}</span></td>
+                                <td>
+                                    <button className="btn btn-green" onClick={()=>handleStockAction(st.id, 'receive')}>+</button>
+                                    <button className="btn btn-orange" onClick={()=>handleStockAction(st.id, 'sell')}>-</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <button className="btn btn-blue" style={{marginTop:'15px', width:'100%', padding:'12px'}} onClick={addNewStockItem}>+ نیا آئٹم اور سپلائر شامل کریں</button>
+              </div>
+            )}
+
             {activeTab === 'orders' && (
               <div>
-                <form className="card" onSubmit={handleAddOrder}>
-                  <h3 style={{marginTop:0}}>{editingOrder ? 'آرڈر ایڈٹ کریں' : 'نیا آرڈر درج کریں'}</h3>
-                  <input name="date" type="date" required defaultValue={editingOrder ? editingOrder.date : new Date().toISOString().split('T')[0]} />
-                  <input name="supplier" placeholder="سپلائر نام" required defaultValue={editingOrder?.supplier} />
-                  <input name="item" placeholder="آئٹم نام" required defaultValue={editingOrder?.item} />
-                  <input name="qty" type="number" placeholder="مقدار" required defaultValue={editingOrder?.orderedQty} />
-                  <input name="rate" type="number" placeholder="ریٹ" required defaultValue={editingOrder?.rate} />
-                  <div style={{display:'flex', gap:'5px'}}>
-                    <button className="btn btn-green" style={{flex:1}} type="submit">{editingOrder ? 'تبدیلی محفوظ کریں' : 'سیو کریں'}</button>
-                    {editingOrder && <button type="button" className="btn btn-gray" style={{flex:1}} onClick={() => setEditingOrder(null)}>کینسل</button>}
-                  </div>
-                </form>
+                <h3 className="card" style={{textAlign:'center', background:'#eef', margin:'0 0 10px 0'}}>خریداری کا ریکارڈ</h3>
                 {orders.map(o => (
                   <div className="card" key={o.id}>
                     <div style={{display:'flex', justifyContent:'space-between'}}>
                         <strong>{o.supplier} - {o.item}</strong>
                         <small>{o.date}</small>
                     </div>
-                    <p style={{margin:'5px 0'}}>کل آرڈر: {o.orderedQty} | موصول: {o.receivedQty} | ریٹ: {o.rate}</p>
-                    <div style={{marginTop:'10px'}}>
-                      <button className="btn btn-green" onClick={()=>receiveStock(o.id)}>مال موصول کریں</button>
-                      <button className="btn btn-orange" onClick={()=>setEditingOrder(o)}>ایڈٹ</button>
-                      <button className="btn btn-red" onClick={() => { if(confirm('ڈیلیٹ کریں؟')) setOrders(orders.filter(x=>x.id!==o.id)) }}>ڈیلیٹ</button>
-                    </div>
+                    <p style={{margin:'5px 0'}}>مقدار: {o.receivedQty} | ریٹ: {o.rate} | ٹوٹل: {o.receivedQty * o.rate} Rs</p>
                   </div>
                 ))}
               </div>
@@ -180,30 +187,13 @@
                suppliers.map((s, i) => (
                 <div className="card" key={i}>
                   <h3>{s.name}</h3>
-                  <div style={{display:'flex', justifyContent:'space-between'}}>
-                    <span>کل بل: {s.totalBilled}</span>
-                    <span>ادا شدہ: {s.totalPaid}</span>
-                  </div>
-                  <p style={{fontSize:'18px', color:'#e74c3c'}}><strong>بقایا: {s.totalBilled - s.totalPaid} Rs</strong></p>
-                  <button className="btn btn-blue" onClick={()=>downloadPDF(s.name)}>PDF رپورٹ</button>
+                  <p>بقایا کھاتہ: <strong style={{color:'red'}}>{s.totalBilled - s.totalPaid} Rs</strong></p>
                   <button className="btn btn-green" onClick={() => {
-                    const p = prompt("رقم درج کریں جو آپ نے ادا کی:");
-                    if(p && !isNaN(p)) setSuppliers(suppliers.map(sup => sup.name === s.name ? {...sup, totalPaid: sup.totalPaid + parseInt(p)} : sup));
+                    const p = prompt("رقم درج کریں:");
+                    if(p) setSuppliers(suppliers.map(sup => sup.name === s.name ? {...sup, totalPaid: sup.totalPaid + parseInt(p)} : sup));
                   }}>پیمنٹ جمع کریں</button>
                 </div>
               ))
-            )}
-
-            {activeTab === 'stock' && (
-              <div className="card">
-                <h3>دکان کا اسٹاک</h3>
-                <table style={{width:'100%', textAlign:'right', borderCollapse:'collapse'}}>
-                    <thead><tr style={{borderBottom:'1px solid #ddd'}}><th>آئٹم</th><th>مقدار (Doz)</th></tr></thead>
-                    <tbody>
-                        {stock.map((st, i) => <tr key={i} style={{borderBottom:'1px solid #eee'}}><td style={{padding:'8px 0'}}>{st.name}</td><td>{st.qty}</td></tr>)}
-                    </tbody>
-                </table>
-              </div>
             )}
           </div>
         </div>
