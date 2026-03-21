@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل اسٹاک کنٹرول</title>
+  <title>نیو قاری ہوزری - مکمل ریکارڈ</title>
   
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -15,21 +15,19 @@
 
   <style>
     body { margin: 0; background-color: #f4f7f6; font-family: sans-serif; }
-    .card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card { background: white; padding: 12px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-right: 5px solid #ddd; }
+    .purchase-card { border-right-color: #3498db; }
+    .payment-card { border-right-color: #2ecc71; }
     .btn { padding: 6px 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 2px; font-size: 12px; }
     .btn-blue { background: #3498db; color: white; }
     .btn-green { background: #27ae60; color: white; }
-    .btn-red { background: #e74c3c; color: white; }
     .btn-orange { background: #f39c12; color: white; }
-    input { padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 8px; width: 100%; box-sizing: border-box; }
     .tab-btn { flex: 1; padding: 12px; border: none; background: #ecf0f1; font-weight: bold; }
     .active-tab { background: #3498db; color: white; border-bottom: 3px solid #2980b9; }
     table { width: 100%; text-align: right; border-collapse: collapse; }
-    th, td { padding: 10px; border-bottom: 1px solid #eee; }
-    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; }
-    .bg-green { background: #e8f5e9; color: #2e7d32; }
-    .bg-blue { background: #e3f2fd; color: #1565c0; }
-    .supplier-tag { font-size: 11px; color: #7f8c8d; display: block; margin-top: 2px; }
+    th, td { padding: 8px; border-bottom: 1px solid #eee; }
+    .total-banner { background: #2c3e50; color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; font-size: 16px; }
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #e3f2fd; color: #1565c0; }
   </style>
 </head>
 <body>
@@ -57,8 +55,8 @@
       const [activeTab, setActiveTab] = useState('stock');
       const [dataLoaded, setDataLoaded] = useState(false);
       const [suppliers, setSuppliers] = useState([]);
-      const [orders, setOrders] = useState([]);
       const [stock, setStock] = useState([]);
+      const [transactions, setTransactions] = useState([]);
 
       useEffect(() => {
         auth.onAuthStateChanged(u => {
@@ -68,8 +66,8 @@
               if (doc.exists) {
                 const d = doc.data();
                 setSuppliers(d.suppliers || []);
-                setOrders(d.orders || []);
                 setStock(d.stock || []);
+                setTransactions(d.transactions || []);
               }
               setDataLoaded(true);
             });
@@ -78,46 +76,29 @@
       }, []);
 
       useEffect(() => {
-        if(dataLoaded && user) storeDataRef.set({ suppliers, orders, stock });
-      }, [suppliers, orders, stock]);
+        if(dataLoaded && user) storeDataRef.set({ suppliers, stock, transactions });
+      }, [suppliers, stock, transactions]);
+
+      const totalStockValue = stock.reduce((total, s) => total + (s.qty * (s.rate || 0)), 0);
 
       const handleStockAction = (itemKey, type) => {
         const target = stock.find(s => s.id === itemKey);
-        const qtyStr = prompt(type === 'receive' ? `${target.name} (${target.supplier}) کی کتنی مقدار موصول ہوئی؟` : `${target.name} کتنی مقدار بیچی؟`);
+        const qtyStr = prompt(type === 'receive' ? `${target.name} کتنا مال آیا؟` : `${target.name} کتنا بیچا؟`);
         if(!qtyStr || isNaN(qtyStr)) return;
         const amount = parseInt(qtyStr);
         
-        setStock(stock.map(st => {
-          if(st.id === itemKey) {
-            if(type === 'sell' && st.qty < amount) { alert("اسٹاک کم ہے!"); return st; }
-            return {
-              ...st, 
-              qty: type === 'receive' ? st.qty + amount : st.qty - amount,
-              sold: type === 'sell' ? (st.sold || 0) + amount : (st.sold || 0)
-            };
-          }
-          return st;
-        }));
-
         if(type === 'receive') {
-            const rate = prompt("فی درجن ریٹ درج کریں:");
+            const rate = prompt("فی درجن ریٹ درج کریں:", target.rate || "");
             if(rate) {
                 const bill = amount * parseInt(rate);
+                setStock(stock.map(st => st.id === itemKey ? {...st, qty: st.qty + amount, rate: parseInt(rate), totalOrdered: (st.totalOrdered || 0) + amount} : st));
                 setSuppliers(prev => prev.map(s => s.name === target.supplier ? {...s, totalBilled: s.totalBilled + bill} : s));
-                setOrders([{id: Date.now(), date: new Date().toISOString().split('T')[0], supplier: target.supplier, item: target.name, receivedQty: amount, rate: parseInt(rate)}, ...orders]);
+                setTransactions([{id: Date.now(), date: new Date().toLocaleDateString('ur-PK'), type: 'purchase', supplier: target.supplier, item: target.name, qty: amount, amount: bill}, ...transactions]);
             }
+        } else {
+            if(target.qty < amount) { alert("اسٹاک کم ہے!"); return; }
+            setStock(stock.map(st => st.id === itemKey ? {...st, qty: st.qty - amount, sold: (st.sold || 0) + amount} : st));
         }
-      };
-
-      const addNewStockItem = () => {
-          const name = prompt("آئٹم کا نام (مثلاً: بنیان وی آئی پی):");
-          const supplier = prompt("سپلائر کا نام (مثلاً: علی برادرز):");
-          if(name && supplier) {
-              setStock([...stock, { id: Date.now(), name, supplier, qty: 0, sold: 0 }]);
-              if(!suppliers.find(s => s.name === supplier)) {
-                  setSuppliers([...suppliers, {name: supplier, totalBilled: 0, totalPaid: 0}]);
-              }
-          }
       };
 
       if (!user) return <div style={{textAlign:'center', padding:'50px'}}><button className="btn btn-blue" onClick={()=>auth.signInAnonymously()}>کھاتہ کھولیں</button></div>;
@@ -129,33 +110,24 @@
           </div>
           
           <div style={{display:'flex'}}>
-            <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک گودام</button>
-            <button className={`tab-btn ${activeTab==='orders'?'active-tab':''}`} onClick={()=>setActiveTab('orders')}>حالیہ انٹری</button>
+            <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
+            <button className={`tab-btn ${activeTab==='history'?'active-tab':''}`} onClick={()=>setActiveTab('history')}>ریکارڈ</button>
             <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
           </div>
 
           <div style={{padding:'10px'}}>
             {activeTab === 'stock' && (
-              <div className="card">
-                <h3>گودام (آئٹم + سپلائر)</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>تفصیل آئٹم</th>
-                            <th>موجود</th>
-                            <th>بکا</th>
-                            <th>ایکشن</th>
-                        </tr>
-                    </thead>
+              <div>
+                <div className="total-banner">گودام مالیت: {totalStockValue.toLocaleString()} Rs</div>
+                <div className="card" style={{borderRight:'none'}}>
+                  <table>
+                    <thead><tr><th>آئٹم / سپلائر</th><th>موجود</th><th>ٹوٹل آرڈر</th><th>ایکشن</th></tr></thead>
                     <tbody>
                         {stock.map((st) => (
                             <tr key={st.id}>
-                                <td>
-                                    <strong>{st.name}</strong>
-                                    <span className="supplier-tag">سپلائر: {st.supplier}</span>
-                                </td>
-                                <td><span className="badge bg-green">{st.qty}</span></td>
-                                <td><span className="badge bg-blue">{st.sold || 0}</span></td>
+                                <td><strong>{st.name}</strong><br/><small>{st.supplier}</small></td>
+                                <td><b>{st.qty}</b><br/><small>{st.rate} Rs</small></td>
+                                <td><span className="badge">{st.totalOrdered || 0}</span></td>
                                 <td>
                                     <button className="btn btn-green" onClick={()=>handleStockAction(st.id, 'receive')}>+</button>
                                     <button className="btn btn-orange" onClick={()=>handleStockAction(st.id, 'sell')}>-</button>
@@ -163,35 +135,45 @@
                             </tr>
                         ))}
                     </tbody>
-                </table>
-                <button className="btn btn-blue" style={{marginTop:'15px', width:'100%', padding:'12px'}} onClick={addNewStockItem}>+ نیا آئٹم اور سپلائر شامل کریں</button>
+                  </table>
+                  <button className="btn btn-blue" style={{marginTop:'15px', width:'100%', padding:'10px'}} onClick={() => {
+                      const n = prompt("آئٹم کا نام:");
+                      const s = prompt("سپلائر کا نام:");
+                      if(n && s) setStock([...stock, { id: Date.now(), name: n, supplier: s, qty: 0, sold: 0, rate: 0, totalOrdered: 0 }]);
+                  }}>+ نیا آئٹم شامل کریں</button>
+                </div>
               </div>
             )}
 
-            {activeTab === 'orders' && (
-              <div>
-                <h3 className="card" style={{textAlign:'center', background:'#eef', margin:'0 0 10px 0'}}>خریداری کا ریکارڈ</h3>
-                {orders.map(o => (
-                  <div className="card" key={o.id}>
-                    <div style={{display:'flex', justifyContent:'space-between'}}>
-                        <strong>{o.supplier} - {o.item}</strong>
-                        <small>{o.date}</small>
+            {activeTab === 'history' && (
+               <div>
+                 <h3 style={{textAlign:'center', color:'#555'}}>خریداری و ادائیگی تفصیل</h3>
+                 {transactions.map(t => (
+                    <div className={`card ${t.type==='purchase'?'purchase-card':'payment-card'}`} key={t.id}>
+                      <div style={{display:'flex', justifyContent:'space-between'}}><b>{t.supplier}</b><small>{t.date}</small></div>
+                      {t.type === 'purchase' ? 
+                        <p>📦 مال موصول: {t.item} ({t.qty} درجن) - <b>بل: {t.amount} Rs</b></p> : 
+                        <p>💰 نقد ادائیگی: <b>{t.amount} Rs</b></p>
+                      }
                     </div>
-                    <p style={{margin:'5px 0'}}>مقدار: {o.receivedQty} | ریٹ: {o.rate} | ٹوٹل: {o.receivedQty * o.rate} Rs</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+               </div>
             )}
 
             {activeTab === 'ledger' && (
                suppliers.map((s, i) => (
-                <div className="card" key={i}>
+                <div className="card payment-card" key={i}>
                   <h3>{s.name}</h3>
-                  <p>بقایا کھاتہ: <strong style={{color:'red'}}>{s.totalBilled - s.totalPaid} Rs</strong></p>
-                  <button className="btn btn-green" onClick={() => {
-                    const p = prompt("رقم درج کریں:");
-                    if(p) setSuppliers(suppliers.map(sup => sup.name === s.name ? {...sup, totalPaid: sup.totalPaid + parseInt(p)} : sup));
-                  }}>پیمنٹ جمع کریں</button>
+                  <p>کل خریداری: {s.totalBilled} | کل ادائیگی: {s.totalPaid}</p>
+                  <p>بقایا: <strong style={{color:'red', fontSize:'18px'}}>{(s.totalBilled - s.totalPaid).toLocaleString()} Rs</strong></p>
+                  <button className="btn btn-green" style={{width:'100%', padding:'10px'}} onClick={() => {
+                      const p = prompt(`${s.name} کو کتنی رقم دی؟`);
+                      if(p) {
+                          const amt = parseInt(p);
+                          setSuppliers(suppliers.map(sup => sup.name === s.name ? {...sup, totalPaid: sup.totalPaid + amt} : sup));
+                          setTransactions([{id: Date.now(), date: new Date().toLocaleDateString('ur-PK'), type: 'payment', supplier: s.name, amount: amt}, ...transactions]);
+                      }
+                  }}>پیمنٹ درج کریں</button>
                 </div>
               ))
             )}
