@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - بقایا مال فکس</title>
+  <title>نیو قاری ہوزری - پرانا ریکارڈ فکس</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -145,7 +145,6 @@
                             </thead>
                             <tbody>
                               {stock.map(s => {
-                                // نیا اور پکا فارمولا: وصول شدہ = موجودہ + بکا ہوا
                                 const totalRec = s.qty + (s.sold || 0);
                                 const remaining = (s.totalOrdered || 0) - totalRec;
                                 
@@ -261,7 +260,6 @@
                     } else {
                       if(modal.item.qty < amt) { alert("اسٹاک میں اتنا مال نہیں ہے!"); return; }
                       const historyEntry = { id: Date.now()+3, itemId: modal.item.id, date: dateStr, type: 'out', qty: amt };
-                      // مال بیچنے پر 'sold' کالم میں بھی اضافہ کیا جائے
                       sync(suppliers, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - amt, sold: (s.sold || 0) + amt} : s), ledger, [historyEntry, ...stockHistory]);
                     }
                     setModal(null);
@@ -283,11 +281,13 @@
                   </form>
                 )}
 
-                {/* اسٹاک ہسٹری دکھانے والا ماڈل */}
                 {modal.type === 'viewStockHistory' && (() => {
-                  // نیا اور پکا فارمولا
                   const totalRec = modal.item.qty + (modal.item.sold || 0);
                   const rem = (modal.item.totalOrdered || 0) - totalRec;
+                  
+                  // پرانے مال کا حساب (جو نئے سسٹم کے آنے سے پہلے ایڈ ہوا تھا)
+                  const historyRecIn = stockHistory.filter(h => h.itemId === modal.item.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0);
+                  const oldStockDiff = totalRec - historyRecIn;
                   
                   return (
                   <div>
@@ -326,7 +326,18 @@
                             </td>
                           </tr>
                         ))}
-                        {stockHistory.filter(h => h.itemId === modal.item.id).length === 0 && (
+                        
+                        {/* پرانے مال کی انٹری جو آٹو نظر آئے گی */}
+                        {oldStockDiff > 0 && (
+                          <tr style={{background: '#f9f9f9'}}>
+                            <td style={{color:'#7f8c8d'}}>-</td>
+                            <td style={{color: '#2ecc71', fontWeight:'bold'}}>پرانا ریکارڈ (آمد)</td>
+                            <td><strong>{oldStockDiff}</strong></td>
+                            <td className="no-print">-</td>
+                          </tr>
+                        )}
+
+                        {stockHistory.filter(h => h.itemId === modal.item.id).length === 0 && oldStockDiff <= 0 && (
                           <tr><td colSpan="4">ابھی تک کوئی ریکارڈ موجود نہیں ہے۔</td></tr>
                         )}
                       </tbody>
@@ -355,7 +366,6 @@
                        }
                     } else {
                        const qtyDiff = newQty - modal.data.qty;
-                       // ایڈٹ پر 'sold' کی تعداد بھی ایڈجسٹ کی جائے
                        nStock = nStock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - qtyDiff, sold: (s.sold || 0) + qtyDiff} : s);
                     }
                     
