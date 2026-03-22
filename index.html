@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - ڈرائیو لنک سسٹم</title>
+  <title>نیو قاری ہوزری - مکمل سسٹم مع بیک اپ</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -95,6 +95,34 @@
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
       const handlePrint = () => { window.print(); };
 
+      // ایکسل بیک اپ ڈاؤن لوڈ کرنے کا فنکشن
+      const downloadBackup = () => {
+        let csv = "اسٹاک رپورٹ\n";
+        csv += "آئٹم,سپلائر,کل آرڈر,موجودہ اسٹاک,ریٹ,کل مالیت\n";
+        stock.forEach(s => {
+           csv += `${s.name},${s.supplier},${s.totalOrdered || 0},${s.qty},${s.rate},${s.qty * (s.rate || 0)}\n`;
+        });
+
+        csv += "\nکھاتہ رپورٹ\n";
+        csv += "سپلائر کا نام,ٹوٹل بل,ٹوٹل ادا شدہ,بقایا رقم\n";
+        suppliers.forEach(s => {
+           const bal = ledger.filter(l => l.supplierId === s.id).reduce((a,c) => c.type === 'bill' ? a + c.amount : a - c.amount, 0);
+           const billed = ledger.filter(l => l.supplierId === s.id && l.type === 'bill').reduce((a,c) => a + c.amount, 0);
+           const paid = ledger.filter(l => l.supplierId === s.id && l.type === 'payment').reduce((a,c) => a + c.amount, 0);
+           csv += `${s.name},${billed},${paid},${bal}\n`;
+        });
+
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `نیو_قاری_ہوزری_بیک_اپ_${new Date().toLocaleDateString('ur-PK')}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      };
+
       const deleteHistoryEntry = (h, item) => {
         if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟ اس سے متعلقہ اسٹاک اور سپلائر کا کھاتہ بھی واپس ہو جائے گا۔')) {
             let nStock = [...stock];
@@ -135,6 +163,9 @@
                   </div>
                   <div className="container">
                     
+                    {/* بیک اپ بٹن (دونوں ٹیبز میں نظر آئے گا) */}
+                    <button className="btn btn-green no-print" style={{width:'100%', padding:'12px', marginBottom:'10px', fontSize:'15px'}} onClick={downloadBackup}>💾 ایکسل (CSV) بیک اپ ڈاؤن لوڈ کریں</button>
+
                     {activeTab === 'stock' && (
                       <div>
                         <div className="total-banner no-print">گودام مالیت: {totalValue.toLocaleString()} Rs</div>
@@ -234,7 +265,6 @@
                             <td>{l.date}</td>
                             <td style={{fontSize:'12px'}}>
                                 {l.note}
-                                {/* اگر گوگل ڈرائیو کا لنک موجود ہے تو دکھائیں */}
                                 {l.fileUrl && <div style={{marginTop:'5px'}}><a href={l.fileUrl} target="_blank" rel="noreferrer" style={{color:'#3498db', textDecoration:'none', fontWeight:'bold'}}>📄 سابقہ ریکارڈ دیکھیں</a></div>}
                             </td>
                             <td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td>
@@ -347,7 +377,7 @@
                   <form className="no-print" onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
-                    const fileUrl = f.get('fileUrl'); // گوگل ڈرائیو کا لنک لیا
+                    const fileUrl = f.get('fileUrl'); 
                     
                     sync(suppliers, stock, [{
                         id: Date.now(),
@@ -356,7 +386,7 @@
                         type: modal.entryType,
                         amount: parseInt(f.get('a')),
                         note: f.get('n'),
-                        fileUrl: fileUrl ? fileUrl : null // اگر لنک ہے تو سیو کرے
+                        fileUrl: fileUrl ? fileUrl : null 
                     }, ...ledger]);
                     
                     setModal(null);
@@ -369,7 +399,6 @@
                     <label>تفصیل (مثلاً: پچھلا ریکارڈ پی ڈی ایف میں):</label>
                     <input name="n" placeholder="یہاں تفصیل لکھیں..." />
                     
-                    {/* گوگل ڈرائیو لنک والا خانہ */}
                     <div style={{background: '#eef2f3', padding: '10px', borderRadius: '5px', marginTop: '10px'}}>
                         <label style={{fontWeight: 'bold', display: 'block', marginBottom: '5px'}}>سابقہ ریکارڈ کا گوگل ڈرائیو لنک (اختیاری):</label>
                         <input type="url" name="fileUrl" placeholder="https://drive.google.com/file/d/..." style={{border: '1px solid #bdc3c7', padding: '8px', width: '100%'}} />
