@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل ریکارڈ اور پرنٹ</title>
+  <title>نیو قاری ہوزری - بقایا مال فکس</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -98,7 +98,7 @@
                 nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty - h.qty} : s);
                 if(h.ledgerId) nLedger = nLedger.filter(l => l.id !== h.ledgerId);
             } else {
-                nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty + h.qty} : s);
+                nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty + h.qty, sold: (s.sold || 0) - h.qty} : s);
             }
             sync(suppliers, nStock, nLedger, stockHistory.filter(x => x.id !== h.id));
             setModal({type:'viewStockHistory', item: item}); 
@@ -109,7 +109,6 @@
 
       return (
         <div>
-          {/* مین باڈی: اگر ماڈل کھلا ہو تو پرنٹ میں مین باڈی غائب ہو جائے گی تاکہ صرف ماڈل پرنٹ ہو */}
           <div className={modal ? "no-print" : ""}>
               <div className="print-only">
                  <h1 style={{margin:0, color:'#2c3e50'}}>نیو قاری ہوزری سٹور</h1>
@@ -146,8 +145,8 @@
                             </thead>
                             <tbody>
                               {stock.map(s => {
-                                // بقایا مال کا پکا فارمولا
-                                const totalRec = stockHistory.filter(h => h.itemId === s.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0);
+                                // نیا اور پکا فارمولا: وصول شدہ = موجودہ + بکا ہوا
+                                const totalRec = s.qty + (s.sold || 0);
                                 const remaining = (s.totalOrdered || 0) - totalRec;
                                 
                                 return (
@@ -262,7 +261,8 @@
                     } else {
                       if(modal.item.qty < amt) { alert("اسٹاک میں اتنا مال نہیں ہے!"); return; }
                       const historyEntry = { id: Date.now()+3, itemId: modal.item.id, date: dateStr, type: 'out', qty: amt };
-                      sync(suppliers, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - amt} : s), ledger, [historyEntry, ...stockHistory]);
+                      // مال بیچنے پر 'sold' کالم میں بھی اضافہ کیا جائے
+                      sync(suppliers, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - amt, sold: (s.sold || 0) + amt} : s), ledger, [historyEntry, ...stockHistory]);
                     }
                     setModal(null);
                   }}>
@@ -283,14 +283,14 @@
                   </form>
                 )}
 
-                {/* اسٹاک ہسٹری (ریکارڈ) دکھانے والا ماڈل جس میں پرنٹ بھی ہے */}
+                {/* اسٹاک ہسٹری دکھانے والا ماڈل */}
                 {modal.type === 'viewStockHistory' && (() => {
-                  const totalRec = stockHistory.filter(h => h.itemId === modal.item.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0);
+                  // نیا اور پکا فارمولا
+                  const totalRec = modal.item.qty + (modal.item.sold || 0);
                   const rem = (modal.item.totalOrdered || 0) - totalRec;
                   
                   return (
                   <div>
-                    {/* پرنٹ کے لیے دکان کا ہیڈر */}
                     <div className="print-only">
                        <h1 style={{margin:0, color:'#2c3e50'}}>نیو قاری ہوزری سٹور</h1>
                        <p style={{margin:'5px 0', fontSize:'14px'}}>نزد مبارک مسجد، بلاک اے، قائد اعظم مارکیٹ، فیصل آباد</p>
@@ -304,7 +304,6 @@
                     </div>
                     <p style={{margin:'0 0 10px 0', fontSize:'14px', color:'#555'}}>سپلائر: {modal.item.supplier}</p>
                     
-                    {/* نیا سمری باکس (کل وصولی اور بقایا مال) */}
                     <div className="summary-box">
                       <div><small>کل آرڈر</small><br/><strong>{modal.item.totalOrdered || 0}</strong></div>
                       <div><small>وصول شدہ</small><br/><strong style={{color:'green'}}>{totalRec}</strong></div>
@@ -356,7 +355,8 @@
                        }
                     } else {
                        const qtyDiff = newQty - modal.data.qty;
-                       nStock = nStock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - qtyDiff} : s);
+                       // ایڈٹ پر 'sold' کی تعداد بھی ایڈجسٹ کی جائے
+                       nStock = nStock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - qtyDiff, sold: (s.sold || 0) + qtyDiff} : s);
                     }
                     
                     const nHistory = stockHistory.map(h => h.id === modal.data.id ? {...h, date: newDate, qty: newQty, rate: newRate} : h);
@@ -398,7 +398,7 @@
                     const nId = Date.now();
                     let nSups = [...suppliers];
                     if(!suppliers.find(x=>x.name === sName)) nSups.push({id: nId+1, name: sName});
-                    sync(nSups, [...stock, {id: nId, name: f.get('n'), supplier: sName, qty: 0, rate: parseInt(f.get('r')), totalOrdered: parseInt(f.get('o'))}], ledger);
+                    sync(nSups, [...stock, {id: nId, name: f.get('n'), supplier: sName, qty: 0, sold: 0, rate: parseInt(f.get('r')), totalOrdered: parseInt(f.get('o'))}], ledger);
                     setModal(null);
                   }}>
                     <h3>نیا آئٹم</h3>
