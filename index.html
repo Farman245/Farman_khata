@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل ریکارڈ اور ایڈٹ سسٹم</title>
+  <title>نیو قاری ہوزری - مکمل ریکارڈ اور پرنٹ</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -35,9 +35,10 @@
     @media print {
       .no-print { display: none !important; }
       .print-only { display: block !important; text-align: center; margin-bottom: 20px; }
-      body { background: white; }
-      .card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
-      .header, .tab-bar { display: none; }
+      body { background: white !important; }
+      .card { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
+      .modal { position: static !important; background: transparent !important; padding: 0 !important; }
+      .modal > .card { border: none !important; width: 100% !important; max-width: 100% !important; }
       th, td { border: 1px solid #000; padding: 8px; text-align: center; }
       table { border: 1px solid #000; }
     }
@@ -89,7 +90,6 @@
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
       const handlePrint = () => { window.print(); };
 
-      // ہسٹری ڈیلیٹ کرنے کا فنکشن (جو اسٹاک اور کھاتہ بھی واپس کرے گا)
       const deleteHistoryEntry = (h, item) => {
         if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟ اس سے متعلقہ اسٹاک اور سپلائر کا کھاتہ بھی واپس ہو جائے گا۔')) {
             let nStock = [...stock];
@@ -109,129 +109,135 @@
 
       return (
         <div>
-          <div className="print-only">
-             <h1 style={{margin:0, color:'#2c3e50'}}>نیو قاری ہوزری سٹور</h1>
-             <p style={{margin:'5px 0', fontSize:'14px'}}>نزد مبارک مسجد، بلاک اے، قائد اعظم مارکیٹ، فیصل آباد</p>
-             <p style={{margin:'0 0 10px 0', fontSize:'14px', fontWeight:'bold'}}>فون: 0306-5378112</p>
-             <hr style={{borderTop:'2px solid #2c3e50'}}/>
-          </div>
-
-          <div className="header no-print"><h2>نیو قاری ہوزری سٹور</h2></div>
-          
-          {!viewingSup ? (
-            <>
-              <div className="tab-bar no-print">
-                <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
-                <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
+          {/* مین باڈی: اگر ماڈل کھلا ہو تو پرنٹ میں مین باڈی غائب ہو جائے گی تاکہ صرف ماڈل پرنٹ ہو */}
+          <div className={modal ? "no-print" : ""}>
+              <div className="print-only">
+                 <h1 style={{margin:0, color:'#2c3e50'}}>نیو قاری ہوزری سٹور</h1>
+                 <p style={{margin:'5px 0', fontSize:'14px'}}>نزد مبارک مسجد، بلاک اے، قائد اعظم مارکیٹ، فیصل آباد</p>
+                 <p style={{margin:'0 0 10px 0', fontSize:'14px', fontWeight:'bold'}}>فون: 0306-5378112</p>
+                 <hr style={{borderTop:'2px solid #2c3e50'}}/>
               </div>
-              <div className="container">
-                {activeTab === 'stock' && (
-                  <div>
-                    <div className="total-banner no-print">گودام مالیت: {totalValue.toLocaleString()} Rs</div>
-                    <button className="btn btn-blue no-print" style={{width:'100%', padding:'10px', marginBottom:'10px'}} onClick={handlePrint}>🖨 اسٹاک رپورٹ پرنٹ کریں</button>
+
+              <div className="header no-print"><h2>نیو قاری ہوزری سٹور</h2></div>
+              
+              {!viewingSup ? (
+                <>
+                  <div className="tab-bar no-print">
+                    <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
+                    <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
+                  </div>
+                  <div className="container">
+                    {activeTab === 'stock' && (
+                      <div>
+                        <div className="total-banner no-print">گودام مالیت: {totalValue.toLocaleString()} Rs</div>
+                        <button className="btn btn-blue no-print" style={{width:'100%', padding:'10px', marginBottom:'10px'}} onClick={handlePrint}>🖨 اسٹاک رپورٹ پرنٹ کریں</button>
+                        
+                        <div className="card" style={{overflowX: 'auto'}}>
+                          <h3 className="print-only" style={{marginTop:0}}>موجودہ اسٹاک رپورٹ</h3>
+                          <table style={{minWidth: '100%'}}>
+                            <thead>
+                              <tr>
+                                <th style={{textAlign: 'right'}}>آئٹم/سپلائر</th>
+                                <th style={{textAlign: 'center'}}>کل آرڈر</th>
+                                <th style={{textAlign: 'center'}}>موجود</th>
+                                <th style={{textAlign: 'center'}}>بقایا مال</th>
+                                <th className="no-print">ایکشن</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {stock.map(s => {
+                                // بقایا مال کا پکا فارمولا
+                                const totalRec = stockHistory.filter(h => h.itemId === s.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0);
+                                const remaining = (s.totalOrdered || 0) - totalRec;
+                                
+                                return (
+                                <tr key={s.id}>
+                                  <td style={{textAlign: 'right'}}><strong>{s.name}</strong><br/><small>{s.supplier}</small></td>
+                                  <td style={{textAlign: 'center'}}>{s.totalOrdered || 0}</td>
+                                  <td style={{textAlign: 'center'}}>{s.qty}<br/><small className="no-print" style={{color:'#666'}}>{s.rate} Rs</small></td>
+                                  <td style={{textAlign: 'center', fontWeight: 'bold', color: remaining > 0 ? '#e74c3c' : '#2ecc71'}}>
+                                    {remaining > 0 ? remaining : 0}
+                                  </td>
+                                  <td className="no-print" style={{textAlign: 'center'}}>
+                                    <button className="btn btn-green" title="مال وصول کریں" onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
+                                    <button className="btn btn-orange" title="مال بیچیں" onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
+                                    <button className="btn btn-blue" title="ہسٹری/ریکارڈ" style={{padding:'4px'}} onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
+                                    <button className="btn btn-orange" title="ایڈٹ" style={{padding:'4px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
+                                    <button className="btn btn-red" title="ڈیلیٹ" style={{padding:'4px'}} onClick={()=>{ if(confirm('ڈیلیٹ؟')) sync(suppliers, stock.filter(x=>x.id!==s.id), ledger); }}>🗑</button>
+                                  </td>
+                                </tr>
+                              )})}
+                            </tbody>
+                          </table>
+                          <button className="btn btn-blue no-print" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal({type:'addStock'})}>+ نیا آئٹم شامل کریں</button>
+                        </div>
+                      </div>
+                    )}
                     
-                    <div className="card" style={{overflowX: 'auto'}}>
-                      <h3 className="print-only" style={{marginTop:0}}>موجودہ اسٹاک رپورٹ</h3>
-                      <table style={{minWidth: '100%'}}>
-                        <thead>
-                          <tr>
-                            <th style={{textAlign: 'right'}}>آئٹم/سپلائر</th>
-                            <th style={{textAlign: 'center'}}>کل آرڈر</th>
-                            <th style={{textAlign: 'center'}}>موجود</th>
-                            <th style={{textAlign: 'center'}}>بقایا مال</th>
-                            <th className="no-print">ایکشن</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {stock.map(s => {
-                            const remaining = (s.totalOrdered || 0) - s.qty;
-                            return (
-                            <tr key={s.id}>
-                              <td style={{textAlign: 'right'}}><strong>{s.name}</strong><br/><small>{s.supplier}</small></td>
-                              <td style={{textAlign: 'center'}}>{s.totalOrdered || 0}</td>
-                              <td style={{textAlign: 'center'}}>{s.qty}<br/><small className="no-print" style={{color:'#666'}}>{s.rate} Rs</small></td>
-                              <td style={{textAlign: 'center', fontWeight: 'bold', color: remaining > 0 ? '#e74c3c' : '#2ecc71'}}>
-                                {remaining > 0 ? remaining : 0}
-                              </td>
-                              <td className="no-print" style={{textAlign: 'center'}}>
-                                <button className="btn btn-green" title="مال وصول کریں" onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
-                                <button className="btn btn-orange" title="مال بیچیں" onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
-                                <button className="btn btn-blue" title="ہسٹری/ریکارڈ" style={{padding:'4px'}} onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
-                                <button className="btn btn-orange" title="ایڈٹ" style={{padding:'4px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
-                                <button className="btn btn-red" title="ڈیلیٹ" style={{padding:'4px'}} onClick={()=>{ if(confirm('ڈیلیٹ؟')) sync(suppliers, stock.filter(x=>x.id!==s.id), ledger); }}>🗑</button>
-                              </td>
-                            </tr>
-                          )})}
-                        </tbody>
-                      </table>
-                      <button className="btn btn-blue no-print" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal({type:'addStock'})}>+ نیا آئٹم شامل کریں</button>
+                    {activeTab === 'ledger' && (
+                      <div className="no-print">
+                        <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addSup'})}>+ نیا سپلائر شامل کریں</button>
+                        {suppliers.map(s => {
+                          const bal = ledger.filter(l => l.supplierId === s.id).reduce((a,c) => c.type === 'bill' ? a + c.amount : a - c.amount, 0);
+                          return (
+                            <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: bal > 0 ? '5px solid red' : '5px solid green'}}>
+                              <div onClick={()=>setViewingSup(s)} style={{cursor:'pointer', flex:1}}>
+                                <strong>{s.name}</strong>
+                                <div style={{color: bal > 0 ? 'red' : 'green', fontWeight:'bold'}}>بقایا: {bal.toLocaleString()} Rs</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="container">
+                  <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}>
+                      <button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس لسٹ</button>
+                      <button className="btn btn-blue" onClick={handlePrint}>🖨 بل پرنٹ کریں</button>
+                  </div>
+                  
+                  <div className="card" style={{marginTop:'10px'}}>
+                    <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingSup.name} کا کھاتہ</h3>
+                    <div className="summary-box">
+                      <div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
+                      <div><small>ٹوٹل ادا</small><br/><strong style={{color:'green'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
+                      <div className="balance-highlight">بقایا: {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div>
+                    </div>
+                    <div className="no-print" style={{display:'flex', gap:'5px'}}>
+                      <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل انٹری</button>
+                      <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ ادائیگی</button>
                     </div>
                   </div>
-                )}
-                
-                {activeTab === 'ledger' && (
-                  <div className="no-print">
-                    <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addSup'})}>+ نیا سپلائر شامل کریں</button>
-                    {suppliers.map(s => {
-                      const bal = ledger.filter(l => l.supplierId === s.id).reduce((a,c) => c.type === 'bill' ? a + c.amount : a - c.amount, 0);
-                      return (
-                        <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: bal > 0 ? '5px solid red' : '5px solid green'}}>
-                          <div onClick={()=>setViewingSup(s)} style={{cursor:'pointer', flex:1}}>
-                            <strong>{s.name}</strong>
-                            <div style={{color: bal > 0 ? 'red' : 'green', fontWeight:'bold'}}>بقایا: {bal.toLocaleString()} Rs</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="container">
-              <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}>
-                  <button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس لسٹ</button>
-                  <button className="btn btn-blue" onClick={handlePrint}>🖨 بل پرنٹ کریں</button>
-              </div>
-              
-              <div className="card" style={{marginTop:'10px'}}>
-                <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingSup.name} کا کھاتہ</h3>
-                <div className="summary-box">
-                  <div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
-                  <div><small>ٹوٹل ادا</small><br/><strong style={{color:'green'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
-                  <div className="balance-highlight">بقایا: {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div>
-                </div>
-                <div className="no-print" style={{display:'flex', gap:'5px'}}>
-                  <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل انٹری</button>
-                  <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ ادائیگی</button>
-                </div>
-              </div>
 
-              <div className="card">
-                <table>
-                  <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>ادا</th></tr></thead>
-                  <tbody>
-                    {ledger.filter(l => l.supplierId === viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (
-                      <tr key={l.id}>
-                        <td>{l.date}</td>
-                        <td style={{fontSize:'12px'}}>{l.note}</td>
-                        <td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td>
-                        <td style={{color:'green'}}>{l.type==='payment'?l.amount:'-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                  <div className="card">
+                    <table>
+                      <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>ادا</th></tr></thead>
+                      <tbody>
+                        {ledger.filter(l => l.supplierId === viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (
+                          <tr key={l.id}>
+                            <td>{l.date}</td>
+                            <td style={{fontSize:'12px'}}>{l.note}</td>
+                            <td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td>
+                            <td style={{color:'green'}}>{l.type==='payment'?l.amount:'-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+          </div>
 
           {/* Modal System */}
           {modal && (
-            <div className="modal no-print">
+            <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'450px', maxHeight:'90vh', overflowY:'auto'}}>
                 
                 {modal.type === 'stockAction' && (
-                  <form onSubmit={(e)=>{
+                  <form className="no-print" onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
                     const amt = parseInt(f.get('qty'));
@@ -277,10 +283,36 @@
                   </form>
                 )}
 
-                {/* اسٹاک ہسٹری دکھانے والا ماڈل */}
-                {modal.type === 'viewStockHistory' && (
+                {/* اسٹاک ہسٹری (ریکارڈ) دکھانے والا ماڈل جس میں پرنٹ بھی ہے */}
+                {modal.type === 'viewStockHistory' && (() => {
+                  const totalRec = stockHistory.filter(h => h.itemId === modal.item.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0);
+                  const rem = (modal.item.totalOrdered || 0) - totalRec;
+                  
+                  return (
                   <div>
-                    <h3 style={{marginTop:0}}>{modal.item.name} کا ریکارڈ</h3>
+                    {/* پرنٹ کے لیے دکان کا ہیڈر */}
+                    <div className="print-only">
+                       <h1 style={{margin:0, color:'#2c3e50'}}>نیو قاری ہوزری سٹور</h1>
+                       <p style={{margin:'5px 0', fontSize:'14px'}}>نزد مبارک مسجد، بلاک اے، قائد اعظم مارکیٹ، فیصل آباد</p>
+                       <p style={{margin:'0 0 10px 0', fontSize:'14px', fontWeight:'bold'}}>فون: 0306-5378112</p>
+                       <hr style={{borderTop:'2px solid #2c3e50'}}/>
+                    </div>
+
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <h3 style={{marginTop:0}}>{modal.item.name} کا ریکارڈ</h3>
+                        <button className="btn btn-blue no-print" onClick={handlePrint}>🖨 پرنٹ</button>
+                    </div>
+                    <p style={{margin:'0 0 10px 0', fontSize:'14px', color:'#555'}}>سپلائر: {modal.item.supplier}</p>
+                    
+                    {/* نیا سمری باکس (کل وصولی اور بقایا مال) */}
+                    <div className="summary-box">
+                      <div><small>کل آرڈر</small><br/><strong>{modal.item.totalOrdered || 0}</strong></div>
+                      <div><small>وصول شدہ</small><br/><strong style={{color:'green'}}>{totalRec}</strong></div>
+                      <div className="balance-highlight">
+                        بقایا مال (آنا باقی): {rem > 0 ? rem : 0} درجن
+                      </div>
+                    </div>
+
                     <table style={{fontSize:'13px', width:'100%', textAlign:'center'}}>
                       <thead><tr><th>تاریخ</th><th>عمل</th><th>مقدار</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
@@ -300,13 +332,12 @@
                         )}
                       </tbody>
                     </table>
-                    <button className="btn btn-gray" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal(null)}>بند کریں</button>
+                    <button className="btn btn-gray no-print" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal(null)}>بند کریں</button>
                   </div>
-                )}
+                )})()}
 
-                {/* اسٹاک ہسٹری کو ایڈٹ کرنے کا ماڈل */}
                 {modal.type === 'editStockHistory' && (
-                  <form onSubmit={(e)=>{
+                  <form className="no-print" onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
                     const newDate = f.get('date');
@@ -349,7 +380,7 @@
                 )}
 
                 {modal.type === 'addSup' && (
-                  <div>
+                  <div className="no-print">
                     <h3>نیا سپلائر</h3>
                     <input id="supNameIn" placeholder="نام لکھیں..." />
                     <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=>{
@@ -360,7 +391,7 @@
                   </div>
                 )}
                 {modal.type === 'addStock' && (
-                  <form onSubmit={(e)=>{
+                  <form className="no-print" onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
                     const sName = f.get('s');
@@ -381,7 +412,7 @@
                   </form>
                 )}
                 {modal.type === 'editStock' && (
-                  <form onSubmit={(e)=>{
+                  <form className="no-print" onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
                     sync(suppliers, stock.map(s => s.id === modal.data.id ? {...s, name: f.get('n'), supplier: f.get('s'), totalOrdered: parseInt(f.get('o')), rate: parseInt(f.get('r')), qty: parseInt(f.get('q'))} : s), ledger);
@@ -398,7 +429,7 @@
                   </form>
                 )}
                 {modal.type === 'addEntry' && (
-                  <form onSubmit={(e)=>{
+                  <form className="no-print" onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
                     sync(suppliers, stock, [{id: Date.now(), supplierId: viewingSup.id, date: f.get('d'), type: modal.entryType, amount: parseInt(f.get('a')), note: f.get('n')}, ...ledger]);
