@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل سسٹم</title>
+  <title>نیو قاری ہوزری - مکمل کنیکٹڈ سسٹم</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -74,7 +74,7 @@
 
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
 
-      // --- STOCK ACTIONS ---
+      // --- STOCK ACTIONS (CONNECTED TO LEDGER) ---
       const handleStock = (id, type) => {
         const item = stock.find(s => s.id === id);
         const qty = prompt(type === 'in' ? `${item.name} کتنا آیا؟` : `${item.name} کتنا بیچا؟`);
@@ -85,12 +85,32 @@
           const rate = prompt("ریٹ درج کریں:", item.rate || "");
           if(rate) {
             const bill = amt * parseInt(rate);
-            const entry = { id: Date.now(), supplierId: suppliers.find(s => s.name === item.supplier)?.id, date: new Date().toISOString().split('T')[0], type: 'bill', amount: bill, note: `اسٹاک ان: ${item.name} (${amt} درجن)` };
-            sync(suppliers, stock.map(s => s.id === id ? {...s, qty: s.qty + amt, rate: parseInt(rate)} : s), [entry, ...ledger]);
+            
+            // سپلائر ڈھونڈیں یا نیا بنائیں
+            let currentSups = [...suppliers];
+            let targetSup = currentSups.find(x => x.name === item.supplier);
+            
+            if(!targetSup) {
+              targetSup = { id: Date.now() + 1, name: item.supplier };
+              currentSups.push(targetSup);
+            }
+
+            // کھاتے میں انٹری ڈالیں
+            const entry = { 
+              id: Date.now(), 
+              supplierId: targetSup.id, 
+              date: new Date().toISOString().split('T')[0], 
+              type: 'bill', 
+              amount: bill, 
+              note: `اسٹاک ان: ${item.name} (${amt} درجن)` 
+            };
+
+            sync(currentSups, stock.map(s => s.id === id ? {...s, qty: s.qty + amt, rate: parseInt(rate)} : s), [entry, ...ledger]);
+            alert("اسٹاک بڑھ گیا اور سپلائر کے کھاتے میں بل درج ہو گیا!");
           }
         } else {
           if(item.qty < amt) { alert("اسٹاک کم ہے!"); return; }
-          sync(suppliers, stock.map(s => s.id === id ? {...s, qty: s.qty - amt, sold: (s.sold || 0) + amt} : s), ledger);
+          sync(suppliers, stock.map(s => s.id === id ? {...s, qty: s.qty - amt, sold: (st.sold || 0) + amt} : s), ledger);
         }
       };
 
@@ -102,7 +122,7 @@
           
           {!viewingSup ? (
             <>
-              <div className="tab-bar no-print">
+              <div className="tab-bar">
                 <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
                 <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
               </div>
@@ -121,9 +141,9 @@
                               <td>{s.qty}<br/><small className="badge">{s.rate} Rs</small></td>
                               <td><span className="badge">{s.totalOrdered || 0}</span></td>
                               <td>
-                                <button className="btn btn-green" onClick={()=>handleStock(s.id, 'in')}>+</button>
-                                <button className="btn btn-orange" onClick={()=>handleStock(s.id, 'out')}>-</button>
-                                <button className="btn btn-orange" style={{padding:'3px 5px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
+                                <button className="btn btn-green" title="مال آیا" onClick={()=>handleStock(s.id, 'in')}>+</button>
+                                <button className="btn btn-orange" title="بیچا" onClick={()=>handleStock(s.id, 'out')}>-</button>
+                                <button className="btn btn-orange" title="ایڈٹ" style={{padding:'3px 5px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
                               </td>
                             </tr>
                           ))}
@@ -140,10 +160,10 @@
                     {suppliers.map(s => {
                       const bal = ledger.filter(l => l.supplierId === s.id).reduce((a,c) => c.type === 'bill' ? a + c.amount : a - c.amount, 0);
                       return (
-                        <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: bal > 0 ? '5px solid red' : '5px solid green'}}>
                           <div onClick={()=>setViewingSup(s)} style={{cursor:'pointer', flex:1}}>
                             <strong>{s.name}</strong>
-                            <div style={{color: bal > 0 ? 'red' : 'green', fontSize:'13px'}}>بقایا: {bal.toLocaleString()} Rs</div>
+                            <div style={{color: bal > 0 ? 'red' : 'green', fontSize:'13px', fontWeight:'bold'}}>بقایا: {bal.toLocaleString()} Rs</div>
                           </div>
                           <div>
                             <button className="btn btn-orange" onClick={()=>setModal({type:'editSup', data:s})}>✎</button>
@@ -159,16 +179,16 @@
           ) : (
             <div className="container">
               <button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس سپلائر لسٹ</button>
-              <div className="card" style={{marginTop:'10px'}}>
-                <h3>{viewingSup.name} کا کھاتہ</h3>
-                <div style={{display:'flex', gap:'5px'}}>
-                  <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل وصولی</button>
-                  <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ ادائیگی</button>
+              <div className="card" style={{marginTop:'10px', background:'#f9f9f9'}}>
+                <h3 style={{margin:0}}>{viewingSup.name} کا لیجر</h3>
+                <div style={{display:'flex', gap:'5px', marginTop:'10px'}}>
+                  <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل انٹری</button>
+                  <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ پیمنٹ ادائیگی</button>
                 </div>
               </div>
               <div className="card">
                 <table>
-                  <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل (+)</th><th>ادا (-)</th><th>عمل</th></tr></thead>
+                  <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل (+)</th><th>ادا (-)</th></tr></thead>
                   <tbody>
                     {ledger.filter(l => l.supplierId === viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (
                       <tr key={l.id}>
@@ -176,9 +196,6 @@
                         <td style={{fontSize:'12px'}}>{l.note}</td>
                         <td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td>
                         <td style={{color:'green'}}>{l.type==='payment'?l.amount:'-'}</td>
-                        <td>
-                          <button className="btn btn-orange" style={{padding:'2px 4px'}} onClick={()=>setModal({type:'editEntry', data:l})}>✎</button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -187,7 +204,6 @@
             </div>
           )}
 
-          {/* Modal System */}
           {modal && (
             <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'400px'}}>
@@ -222,34 +238,25 @@
                     <input name="n" defaultValue={modal.data.name} />
                     <input name="s" defaultValue={modal.data.supplier} />
                     <input name="o" type="number" defaultValue={modal.data.totalOrdered} />
-                    <input name="q" type="number" defaultValue={modal.data.qty} placeholder="موجودہ اسٹاک" />
+                    <input name="q" type="number" defaultValue={modal.data.qty} />
                     <input name="r" type="number" defaultValue={modal.data.rate} />
                     <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} type="submit">اپ ڈیٹ</button>
                     <button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
-                {modal.type === 'addSup' && (
-                  <div>
-                    <h3>نیا سپلائر</h3>
-                    <input id="supIn" placeholder="نام لکھیں..." />
-                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=> { sync([...suppliers, {id: Date.now(), name: document.getElementById('supIn').value}], stock, ledger); setModal(null); }}>سیو کریں</button>
-                    <button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button>
-                  </div>
-                )}
                 {(modal.type === 'addEntry' || modal.type === 'editEntry') && (
                   <form onSubmit={(e)=>{
                     e.preventDefault();
                     const f = new FormData(e.target);
-                    const ent = { id: modal.type==='editEntry'?modal.data.id:Date.now(), supplierId: viewingSup.id, date: f.get('d'), type: f.get('t'), amount: parseInt(f.get('a')), note: f.get('n') };
-                    if(modal.type==='addEntry') sync(suppliers, stock, [ent, ...ledger]);
-                    else sync(suppliers, stock, ledger.map(l => l.id === modal.data.id ? ent : l));
+                    const ent = { id: Date.now(), supplierId: viewingSup.id, date: f.get('d'), type: f.get('t'), amount: parseInt(f.get('a')), note: f.get('n') };
+                    sync(suppliers, stock, [ent, ...ledger]);
                     setModal(null);
                   }}>
-                    <h3>{modal.type==='addEntry'?'نئی انٹری':'درست کریں'}</h3>
-                    <input type="date" name="d" defaultValue={modal.type==='editEntry'?modal.data.date:new Date().toISOString().split('T')[0]} />
-                    <input type="number" name="a" placeholder="رقم" defaultValue={modal.type==='editEntry'?modal.data.amount:''} required />
-                    <input name="n" placeholder="تفصیل" defaultValue={modal.type==='editEntry'?modal.data.note:''} />
-                    <input type="hidden" name="t" value={modal.type==='editEntry'?modal.data.type:modal.entryType} />
+                    <h3>انٹری کریں</h3>
+                    <input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} />
+                    <input type="number" name="a" placeholder="رقم" required />
+                    <input name="n" placeholder="تفصیل" />
+                    <input type="hidden" name="t" value={modal.entryType} />
                     <button className="btn btn-green" style={{width:'100%', marginTop:'10px'}} type="submit">محفوظ کریں</button>
                     <button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button>
                   </form>
