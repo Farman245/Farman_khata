@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل سسٹم مع بیک اپ</title>
+  <title>نیو قاری ہوزری - مکمل سسٹم مع کل واجب الادا</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -93,9 +93,12 @@
       };
 
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
+      
+      // مارکیٹ کا کل بقایا (تمام سپلائرز کا جمع شدہ بل مائنس ادائیگیاں)
+      const totalPayable = ledger.reduce((acc, c) => c.type === 'bill' ? acc + c.amount : acc - c.amount, 0);
+
       const handlePrint = () => { window.print(); };
 
-      // ایکسل بیک اپ ڈاؤن لوڈ کرنے کا فنکشن
       const downloadBackup = () => {
         let csv = "اسٹاک رپورٹ\n";
         csv += "آئٹم,سپلائر,کل آرڈر,موجودہ اسٹاک,ریٹ,کل مالیت\n";
@@ -163,7 +166,6 @@
                   </div>
                   <div className="container">
                     
-                    {/* بیک اپ بٹن (دونوں ٹیبز میں نظر آئے گا) */}
                     <button className="btn btn-green no-print" style={{width:'100%', padding:'12px', marginBottom:'10px', fontSize:'15px'}} onClick={downloadBackup}>💾 ایکسل (CSV) بیک اپ ڈاؤن لوڈ کریں</button>
 
                     {activeTab === 'stock' && (
@@ -215,6 +217,10 @@
                     
                     {activeTab === 'ledger' && (
                       <div className="no-print">
+                        
+                        {/* مارکیٹ کا کل بقایا کی پٹی */}
+                        <div className="total-banner no-print" style={{backgroundColor: '#e74c3c'}}>کل واجب الادا (دینے والی رقم): {totalPayable.toLocaleString()} Rs</div>
+
                         <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addSup'})}>+ نیا سپلائر شامل کریں</button>
                         <div>
                            <input type="text" className="search-input" placeholder="🔍 سپلائر تلاش کریں..." value={supplierSearch} onChange={(e) => setSupplierSearch(e.target.value)} />
