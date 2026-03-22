@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل رپورٹ</title>
+  <title>نیو قاری ہوزری - مکمل ریکارڈ سسٹم</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -16,7 +16,7 @@
     .tab-bar { display: flex; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; }
     .tab-btn { flex: 1; padding: 15px; border: none; background: none; font-weight: bold; cursor: pointer; font-size: 15px; }
     .active-tab { border-bottom: 4px solid #3498db; color: #3498db; }
-    .container { padding: 10px; max-width: 600px; margin: auto; }
+    .container { padding: 10px; max-width: 650px; margin: auto; }
     .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin: 2px; }
     .btn-blue { background: #3498db; color: white; }
@@ -24,7 +24,7 @@
     .btn-red { background: #e74c3c; color: white; }
     .btn-orange { background: #f39c12; color: white; }
     .btn-gray { background: #95a5a6; color: white; }
-    input, select { padding: 12px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-top: 8px; box-sizing: border-box; font-size: 14px; }
+    input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-top: 5px; margin-bottom: 10px; box-sizing: border-box; font-size: 14px; }
     .total-banner { background: #2ecc71; color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; }
     .summary-box { background: #eef2f3; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
     .balance-highlight { grid-column: span 2; background: #fff; padding: 10px; border-radius: 8px; border: 2px solid #e74c3c; color: #e74c3c; font-size: 18px; font-weight: bold; }
@@ -60,6 +60,7 @@
       const [suppliers, setSuppliers] = useState([]);
       const [stock, setStock] = useState([]);
       const [ledger, setLedger] = useState([]);
+      const [stockHistory, setStockHistory] = useState([]); // نیا ریکارڈ سسٹم
       const [viewingSup, setViewingSup] = useState(null);
       const [modal, setModal] = useState(null);
 
@@ -73,42 +74,21 @@
                 setSuppliers(d.suppliers || []);
                 setStock(d.stock || []);
                 setLedger(d.ledger || []);
+                setStockHistory(d.stockHistory || []);
               }
             });
           }
         });
       }, []);
 
-      const sync = (newS, newSt, newL) => {
-        setSuppliers(newS); setStock(newSt); setLedger(newL);
-        storeRef.set({ suppliers: newS, stock: newSt, ledger: newL });
+      const sync = (newS, newSt, newL, newSH = stockHistory) => {
+        setSuppliers(newS); setStock(newSt); setLedger(newL); setStockHistory(newSH);
+        storeRef.set({ suppliers: newS, stock: newSt, ledger: newL, stockHistory: newSH });
       };
 
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
 
-      const handleStock = (id, type) => {
-        const item = stock.find(s => s.id === id);
-        const qty = prompt(type === 'in' ? `${item.name} کتنا آیا؟` : `${item.name} کتنا بیچا؟`);
-        if(!qty || isNaN(qty)) return;
-        const amt = parseInt(qty);
-
-        if(type === 'in') {
-          const rate = prompt("ریٹ درج کریں:", item.rate || "");
-          if(rate) {
-            const bill = amt * parseInt(rate);
-            let targetSup = suppliers.find(x => x.name === item.supplier);
-            const entry = { id: Date.now(), supplierId: targetSup ? targetSup.id : 0, date: new Date().toISOString().split('T')[0], type: 'bill', amount: bill, note: `اسٹاک ان: ${item.name} (${amt} درجن)` };
-            sync(suppliers, stock.map(s => s.id === id ? {...s, qty: s.qty + amt, rate: parseInt(rate)} : s), [entry, ...ledger]);
-          }
-        } else {
-          if(item.qty < amt) { alert("اسٹاک کم ہے!"); return; }
-          sync(suppliers, stock.map(s => s.id === id ? {...s, qty: s.qty - amt} : s), ledger);
-        }
-      };
-
-      const handlePrint = () => {
-          window.print();
-      };
+      const handlePrint = () => { window.print(); };
 
       if (!user) return <div style={{textAlign:'center', padding:'50px'}}><button className="btn btn-blue" onClick={()=>firebase.auth().signInAnonymously()}>سسٹم کھولیں</button></div>;
 
@@ -133,7 +113,6 @@
                 {activeTab === 'stock' && (
                   <div>
                     <div className="total-banner no-print">گودام مالیت: {totalValue.toLocaleString()} Rs</div>
-                    
                     <button className="btn btn-blue no-print" style={{width:'100%', padding:'10px', marginBottom:'10px'}} onClick={handlePrint}>🖨 اسٹاک رپورٹ پرنٹ کریں</button>
                     
                     <div className="card" style={{overflowX: 'auto'}}>
@@ -160,10 +139,11 @@
                                 {remaining > 0 ? remaining : 0}
                               </td>
                               <td className="no-print" style={{textAlign: 'center'}}>
-                                <button className="btn btn-green" onClick={()=>handleStock(s.id, 'in')}>+</button>
-                                <button className="btn btn-orange" onClick={()=>handleStock(s.id, 'out')}>-</button>
-                                <button className="btn btn-orange" style={{padding:'4px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
-                                <button className="btn btn-red" style={{padding:'4px'}} onClick={()=>{ if(confirm('ڈیلیٹ؟')) sync(suppliers, stock.filter(x=>x.id!==s.id), ledger); }}>🗑</button>
+                                <button className="btn btn-green" title="مال وصول کریں" onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
+                                <button className="btn btn-orange" title="مال بیچیں" onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
+                                <button className="btn btn-blue" title="ہسٹری/ریکارڈ" style={{padding:'4px'}} onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
+                                <button className="btn btn-orange" title="ایڈٹ" style={{padding:'4px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
+                                <button className="btn btn-red" title="ڈیلیٹ" style={{padding:'4px'}} onClick={()=>{ if(confirm('ڈیلیٹ؟')) sync(suppliers, stock.filter(x=>x.id!==s.id), ledger); }}>🗑</button>
                               </td>
                             </tr>
                           )})}
@@ -233,7 +213,81 @@
           {/* Modal System */}
           {modal && (
             <div className="modal no-print">
-              <div className="card" style={{width:'90%', maxWidth:'400px'}}>
+              <div className="card" style={{width:'90%', maxWidth:'400px', maxHeight:'90vh', overflowY:'auto'}}>
+                
+                {/* اسٹاک ایکشن (+ / -) فارم */}
+                {modal.type === 'stockAction' && (
+                  <form onSubmit={(e)=>{
+                    e.preventDefault();
+                    const f = new FormData(e.target);
+                    const amt = parseInt(f.get('qty'));
+                    const dateStr = f.get('date');
+                    
+                    if(modal.actionType === 'in') {
+                      const rate = parseInt(f.get('rate'));
+                      const bill = amt * rate;
+                      
+                      let currentSups = [...suppliers];
+                      let targetSup = currentSups.find(x => x.name === modal.item.supplier);
+                      if(!targetSup) {
+                        targetSup = { id: Date.now() + 1, name: modal.item.supplier };
+                        currentSups.push(targetSup);
+                      }
+                      
+                      const ledgerEntry = { id: Date.now(), supplierId: targetSup.id, date: dateStr, type: 'bill', amount: bill, note: `وصولی: ${modal.item.name} (${amt} درجن)` };
+                      const historyEntry = { id: Date.now()+2, itemId: modal.item.id, date: dateStr, type: 'in', qty: amt, rate: rate };
+                      
+                      sync(currentSups, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty + amt, rate: rate} : s), [ledgerEntry, ...ledger], [historyEntry, ...stockHistory]);
+                      alert('انٹری محفوظ ہو گئی!');
+                    } else {
+                      if(modal.item.qty < amt) { alert("اسٹاک میں اتنا مال نہیں ہے!"); return; }
+                      const historyEntry = { id: Date.now()+1, itemId: modal.item.id, date: dateStr, type: 'out', qty: amt };
+                      sync(suppliers, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - amt} : s), ledger, [historyEntry, ...stockHistory]);
+                    }
+                    setModal(null);
+                  }}>
+                    <h3 style={{marginTop:0, color: modal.actionType==='in'?'#2ecc71':'#e74c3c'}}>{modal.actionType === 'in' ? 'مال وصول کریں (+)' : 'مال فروخت کریں (-)'}</h3>
+                    <p style={{margin:'0 0 10px 0', fontSize:'14px', color:'#555'}}>{modal.item.name} ({modal.item.supplier})</p>
+                    <label>تاریخ:</label>
+                    <input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required />
+                    <label>مقدار (درجن):</label>
+                    <input type="number" name="qty" required />
+                    {modal.actionType === 'in' && (
+                      <>
+                        <label>ریٹ (فی درجن):</label>
+                        <input type="number" name="rate" defaultValue={modal.item.rate || ''} required />
+                      </>
+                    )}
+                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>انٹری سیو کریں</button>
+                    <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  </form>
+                )}
+
+                {/* اسٹاک ہسٹری دکھانے والا ماڈل */}
+                {modal.type === 'viewStockHistory' && (
+                  <div>
+                    <h3 style={{marginTop:0}}>{modal.item.name} کا ریکارڈ</h3>
+                    <table style={{fontSize:'13px', width:'100%', textAlign:'center'}}>
+                      <thead><tr><th>تاریخ</th><th>عمل</th><th>مقدار</th><th>ریٹ</th></tr></thead>
+                      <tbody>
+                        {stockHistory.filter(h => h.itemId === modal.item.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h => (
+                          <tr key={h.id}>
+                            <td>{h.date}</td>
+                            <td style={{color: h.type==='in'?'#2ecc71':'#e74c3c', fontWeight:'bold'}}>{h.type==='in' ? 'آمد' : 'فروخت'}</td>
+                            <td>{h.qty}</td>
+                            <td>{h.type==='in' ? `${h.rate} Rs` : '-'}</td>
+                          </tr>
+                        ))}
+                        {stockHistory.filter(h => h.itemId === modal.item.id).length === 0 && (
+                          <tr><td colSpan="4">ابھی تک کوئی ریکارڈ موجود نہیں ہے۔</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                    <button className="btn btn-gray" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal(null)}>بند کریں</button>
+                  </div>
+                )}
+
+                {/* باقی پرانے ماڈلز */}
                 {modal.type === 'addSup' && (
                   <div>
                     <h3>نیا سپلائر</h3>
@@ -257,11 +311,11 @@
                     setModal(null);
                   }}>
                     <h3>نیا آئٹم</h3>
-                    <input name="n" placeholder="آئٹم نام" required />
-                    <input name="s" list="supList" placeholder="سپلائر نام" required />
+                    <label>آئٹم نام:</label> <input name="n" required />
+                    <label>سپلائر نام:</label> <input name="s" list="supList" required />
                     <datalist id="supList">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist>
-                    <input name="o" type="number" placeholder="ٹوٹل آرڈر" required />
-                    <input name="r" type="number" placeholder="ریٹ" required />
+                    <label>ٹوٹل آرڈر (جو منگوایا):</label> <input name="o" type="number" required />
+                    <label>ریٹ:</label> <input name="r" type="number" required />
                     <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>سیو</button>
                     <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
