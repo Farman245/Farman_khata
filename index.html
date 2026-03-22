@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - پرانا ریکارڈ فکس</title>
+  <title>نیو قاری ہوزری - سرچ فیچر کے ساتھ</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -25,6 +25,7 @@
     .btn-orange { background: #f39c12; color: white; }
     .btn-gray { background: #95a5a6; color: white; }
     input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-top: 5px; margin-bottom: 10px; box-sizing: border-box; font-size: 14px; }
+    .search-input { border: 2px solid #3498db; background-color: #f0f8ff; font-weight: bold; }
     .total-banner { background: #2ecc71; color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; }
     .summary-box { background: #eef2f3; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
     .balance-highlight { grid-column: span 2; background: #fff; padding: 10px; border-radius: 8px; border: 2px solid #e74c3c; color: #e74c3c; font-size: 18px; font-weight: bold; }
@@ -64,6 +65,10 @@
       const [stockHistory, setStockHistory] = useState([]); 
       const [viewingSup, setViewingSup] = useState(null);
       const [modal, setModal] = useState(null);
+      
+      // سرچ کے لیے نئی سٹیٹس
+      const [stockSearch, setStockSearch] = useState('');
+      const [supplierSearch, setSupplierSearch] = useState('');
 
       useEffect(() => {
         firebase.auth().onAuthStateChanged(u => {
@@ -105,6 +110,15 @@
         }
       };
 
+      // فلٹر شدہ لسٹ (سرچ کے مطابق)
+      const filteredStock = stock.filter(s => 
+          s.name.includes(stockSearch) || s.supplier.includes(stockSearch)
+      );
+      
+      const filteredSuppliers = suppliers.filter(s => 
+          s.name.includes(supplierSearch)
+      );
+
       if (!user) return <div style={{textAlign:'center', padding:'50px'}}><button className="btn btn-blue" onClick={()=>firebase.auth().signInAnonymously()}>سسٹم کھولیں</button></div>;
 
       return (
@@ -126,9 +140,23 @@
                     <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>کھاتہ</button>
                   </div>
                   <div className="container">
+                    
+                    {/* اسٹاک ٹیب */}
                     {activeTab === 'stock' && (
                       <div>
                         <div className="total-banner no-print">گودام مالیت: {totalValue.toLocaleString()} Rs</div>
+                        
+                        {/* اسٹاک سرچ بار */}
+                        <div className="no-print">
+                           <input 
+                             type="text" 
+                             className="search-input" 
+                             placeholder="🔍 آئٹم یا سپلائر کا نام تلاش کریں..." 
+                             value={stockSearch}
+                             onChange={(e) => setStockSearch(e.target.value)}
+                           />
+                        </div>
+
                         <button className="btn btn-blue no-print" style={{width:'100%', padding:'10px', marginBottom:'10px'}} onClick={handlePrint}>🖨 اسٹاک رپورٹ پرنٹ کریں</button>
                         
                         <div className="card" style={{overflowX: 'auto'}}>
@@ -144,7 +172,7 @@
                               </tr>
                             </thead>
                             <tbody>
-                              {stock.map(s => {
+                              {filteredStock.map(s => {
                                 const totalRec = s.qty + (s.sold || 0);
                                 const remaining = (s.totalOrdered || 0) - totalRec;
                                 
@@ -165,6 +193,9 @@
                                   </td>
                                 </tr>
                               )})}
+                              {filteredStock.length === 0 && (
+                                <tr><td colSpan="5" style={{textAlign:'center', padding:'20px'}}>کوئی آئٹم نہیں ملا!</td></tr>
+                              )}
                             </tbody>
                           </table>
                           <button className="btn btn-blue no-print" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal({type:'addStock'})}>+ نیا آئٹم شامل کریں</button>
@@ -172,10 +203,23 @@
                       </div>
                     )}
                     
+                    {/* کھاتہ ٹیب */}
                     {activeTab === 'ledger' && (
                       <div className="no-print">
                         <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addSup'})}>+ نیا سپلائر شامل کریں</button>
-                        {suppliers.map(s => {
+                        
+                        {/* سپلائر سرچ بار */}
+                        <div>
+                           <input 
+                             type="text" 
+                             className="search-input" 
+                             placeholder="🔍 سپلائر کا نام تلاش کریں..." 
+                             value={supplierSearch}
+                             onChange={(e) => setSupplierSearch(e.target.value)}
+                           />
+                        </div>
+
+                        {filteredSuppliers.map(s => {
                           const bal = ledger.filter(l => l.supplierId === s.id).reduce((a,c) => c.type === 'bill' ? a + c.amount : a - c.amount, 0);
                           return (
                             <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: bal > 0 ? '5px solid red' : '5px solid green'}}>
@@ -186,6 +230,9 @@
                             </div>
                           );
                         })}
+                        {filteredSuppliers.length === 0 && (
+                            <div style={{textAlign:'center', padding:'20px', color:'#777'}}>کوئی سپلائر نہیں ملا!</div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -285,7 +332,6 @@
                   const totalRec = modal.item.qty + (modal.item.sold || 0);
                   const rem = (modal.item.totalOrdered || 0) - totalRec;
                   
-                  // پرانے مال کا حساب (جو نئے سسٹم کے آنے سے پہلے ایڈ ہوا تھا)
                   const historyRecIn = stockHistory.filter(h => h.itemId === modal.item.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0);
                   const oldStockDiff = totalRec - historyRecIn;
                   
@@ -327,7 +373,6 @@
                           </tr>
                         ))}
                         
-                        {/* پرانے مال کی انٹری جو آٹو نظر آئے گی */}
                         {oldStockDiff > 0 && (
                           <tr style={{background: '#f9f9f9'}}>
                             <td style={{color:'#7f8c8d'}}>-</td>
