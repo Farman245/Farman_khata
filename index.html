@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل ریکارڈ سسٹم</title>
+  <title>نیو قاری ہوزری - مکمل ریکارڈ اور ایڈٹ سسٹم</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -60,7 +60,7 @@
       const [suppliers, setSuppliers] = useState([]);
       const [stock, setStock] = useState([]);
       const [ledger, setLedger] = useState([]);
-      const [stockHistory, setStockHistory] = useState([]); // نیا ریکارڈ سسٹم
+      const [stockHistory, setStockHistory] = useState([]); 
       const [viewingSup, setViewingSup] = useState(null);
       const [modal, setModal] = useState(null);
 
@@ -87,8 +87,23 @@
       };
 
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
-
       const handlePrint = () => { window.print(); };
+
+      // ہسٹری ڈیلیٹ کرنے کا فنکشن (جو اسٹاک اور کھاتہ بھی واپس کرے گا)
+      const deleteHistoryEntry = (h, item) => {
+        if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟ اس سے متعلقہ اسٹاک اور سپلائر کا کھاتہ بھی واپس ہو جائے گا۔')) {
+            let nStock = [...stock];
+            let nLedger = [...ledger];
+            if(h.type === 'in') {
+                nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty - h.qty} : s);
+                if(h.ledgerId) nLedger = nLedger.filter(l => l.id !== h.ledgerId);
+            } else {
+                nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty + h.qty} : s);
+            }
+            sync(suppliers, nStock, nLedger, stockHistory.filter(x => x.id !== h.id));
+            setModal({type:'viewStockHistory', item: item}); 
+        }
+      };
 
       if (!user) return <div style={{textAlign:'center', padding:'50px'}}><button className="btn btn-blue" onClick={()=>firebase.auth().signInAnonymously()}>سسٹم کھولیں</button></div>;
 
@@ -213,9 +228,8 @@
           {/* Modal System */}
           {modal && (
             <div className="modal no-print">
-              <div className="card" style={{width:'90%', maxWidth:'400px', maxHeight:'90vh', overflowY:'auto'}}>
+              <div className="card" style={{width:'90%', maxWidth:'450px', maxHeight:'90vh', overflowY:'auto'}}>
                 
-                {/* اسٹاک ایکشن (+ / -) فارم */}
                 {modal.type === 'stockAction' && (
                   <form onSubmit={(e)=>{
                     e.preventDefault();
@@ -234,14 +248,14 @@
                         currentSups.push(targetSup);
                       }
                       
-                      const ledgerEntry = { id: Date.now(), supplierId: targetSup.id, date: dateStr, type: 'bill', amount: bill, note: `وصولی: ${modal.item.name} (${amt} درجن)` };
-                      const historyEntry = { id: Date.now()+2, itemId: modal.item.id, date: dateStr, type: 'in', qty: amt, rate: rate };
+                      const ledgerEntryId = Date.now() + 2;
+                      const ledgerEntry = { id: ledgerEntryId, supplierId: targetSup.id, date: dateStr, type: 'bill', amount: bill, note: `وصولی: ${modal.item.name} (${amt} درجن)` };
+                      const historyEntry = { id: Date.now()+3, itemId: modal.item.id, date: dateStr, type: 'in', qty: amt, rate: rate, ledgerId: ledgerEntryId };
                       
                       sync(currentSups, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty + amt, rate: rate} : s), [ledgerEntry, ...ledger], [historyEntry, ...stockHistory]);
-                      alert('انٹری محفوظ ہو گئی!');
                     } else {
                       if(modal.item.qty < amt) { alert("اسٹاک میں اتنا مال نہیں ہے!"); return; }
-                      const historyEntry = { id: Date.now()+1, itemId: modal.item.id, date: dateStr, type: 'out', qty: amt };
+                      const historyEntry = { id: Date.now()+3, itemId: modal.item.id, date: dateStr, type: 'out', qty: amt };
                       sync(suppliers, stock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - amt} : s), ledger, [historyEntry, ...stockHistory]);
                     }
                     setModal(null);
@@ -268,14 +282,17 @@
                   <div>
                     <h3 style={{marginTop:0}}>{modal.item.name} کا ریکارڈ</h3>
                     <table style={{fontSize:'13px', width:'100%', textAlign:'center'}}>
-                      <thead><tr><th>تاریخ</th><th>عمل</th><th>مقدار</th><th>ریٹ</th></tr></thead>
+                      <thead><tr><th>تاریخ</th><th>عمل</th><th>مقدار</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
                         {stockHistory.filter(h => h.itemId === modal.item.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h => (
                           <tr key={h.id}>
                             <td>{h.date}</td>
-                            <td style={{color: h.type==='in'?'#2ecc71':'#e74c3c', fontWeight:'bold'}}>{h.type==='in' ? 'آمد' : 'فروخت'}</td>
+                            <td style={{color: h.type==='in'?'#2ecc71':'#e74c3c', fontWeight:'bold'}}>{h.type==='in' ? `آمد (${h.rate}Rs)` : 'فروخت'}</td>
                             <td>{h.qty}</td>
-                            <td>{h.type==='in' ? `${h.rate} Rs` : '-'}</td>
+                            <td className="no-print">
+                              <button className="btn btn-orange" style={{padding:'2px 4px'}} onClick={()=>setModal({type:'editStockHistory', data: h, item: modal.item})}>✎</button>
+                              <button className="btn btn-red" style={{padding:'2px 4px'}} onClick={()=>deleteHistoryEntry(h, modal.item)}>🗑</button>
+                            </td>
                           </tr>
                         ))}
                         {stockHistory.filter(h => h.itemId === modal.item.id).length === 0 && (
@@ -287,7 +304,50 @@
                   </div>
                 )}
 
-                {/* باقی پرانے ماڈلز */}
+                {/* اسٹاک ہسٹری کو ایڈٹ کرنے کا ماڈل */}
+                {modal.type === 'editStockHistory' && (
+                  <form onSubmit={(e)=>{
+                    e.preventDefault();
+                    const f = new FormData(e.target);
+                    const newDate = f.get('date');
+                    const newQty = parseInt(f.get('qty'));
+                    const newRate = modal.data.type === 'in' ? parseInt(f.get('rate')) : 0;
+                    
+                    let nStock = [...stock];
+                    let nLedger = [...ledger];
+                    
+                    if(modal.data.type === 'in') {
+                       const qtyDiff = newQty - modal.data.qty;
+                       nStock = nStock.map(s => s.id === modal.item.id ? {...s, qty: s.qty + qtyDiff, rate: newRate} : s);
+                       if(modal.data.ledgerId) {
+                           const newBill = newQty * newRate;
+                           nLedger = nLedger.map(l => l.id === modal.data.ledgerId ? {...l, amount: newBill, date: newDate, note: `وصولی: ${modal.item.name} (${newQty} درجن)`} : l);
+                       }
+                    } else {
+                       const qtyDiff = newQty - modal.data.qty;
+                       nStock = nStock.map(s => s.id === modal.item.id ? {...s, qty: s.qty - qtyDiff} : s);
+                    }
+                    
+                    const nHistory = stockHistory.map(h => h.id === modal.data.id ? {...h, date: newDate, qty: newQty, rate: newRate} : h);
+                    sync(suppliers, nStock, nLedger, nHistory);
+                    setModal({type:'viewStockHistory', item: modal.item});
+                  }}>
+                    <h3>انٹری درست کریں ({modal.data.type==='in'?'آمد':'فروخت'})</h3>
+                    <label>تاریخ:</label>
+                    <input type="date" name="date" defaultValue={modal.data.date} required />
+                    <label>مقدار (درجن):</label>
+                    <input type="number" name="qty" defaultValue={modal.data.qty} required />
+                    {modal.data.type === 'in' && (
+                      <>
+                        <label>ریٹ:</label>
+                        <input type="number" name="rate" defaultValue={modal.data.rate} required />
+                      </>
+                    )}
+                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button>
+                    <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal({type:'viewStockHistory', item: modal.item})}>کینسل</button>
+                  </form>
+                )}
+
                 {modal.type === 'addSup' && (
                   <div>
                     <h3>نیا سپلائر</h3>
