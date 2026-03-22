@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - فائنل فکس</title>
+  <title>نیو قاری ہوزری - اسٹاک فکس</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -29,6 +29,8 @@
     table { width: 100%; text-align: right; border-collapse: collapse; margin-top: 10px; }
     th, td { padding: 10px; border-bottom: 1px solid #eee; }
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:1000; padding:10px; }
+    .summary-box { background: #eef2f3; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
+    .balance-highlight { grid-column: span 2; background: #fff; padding: 10px; border-radius: 8px; border: 2px solid #e74c3c; color: #e74c3c; font-size: 18px; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -117,9 +119,10 @@
                               <td><strong>{s.name}</strong><br/><small>{s.supplier}</small></td>
                               <td>{s.qty}<br/><small>{s.rate} Rs</small></td>
                               <td>
-                                <button className="btn btn-green" onClick={()=>handleStock(s.id, 'in')}>+</button>
-                                <button className="btn btn-orange" onClick={()=>handleStock(s.id, 'out')}>-</button>
+                                <button className="btn btn-green" title="مال آیا" onClick={()=>handleStock(s.id, 'in')}>+</button>
+                                <button className="btn btn-orange" title="بیچا" onClick={()=>handleStock(s.id, 'out')}>-</button>
                                 <button className="btn btn-orange" style={{padding:'4px'}} onClick={()=>setModal({type:'editStock', data:s})}>✎</button>
+                                <button className="btn btn-red" style={{padding:'4px'}} onClick={()=>{ if(confirm('ڈیلیٹ؟')) sync(suppliers, stock.filter(x=>x.id!==s.id), ledger); }}>🗑</button>
                               </td>
                             </tr>
                           ))}
@@ -135,12 +138,11 @@
                     {suppliers.map(s => {
                       const bal = ledger.filter(l => l.supplierId === s.id).reduce((a,c) => c.type === 'bill' ? a + c.amount : a - c.amount, 0);
                       return (
-                        <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <div className="card" key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: bal > 0 ? '5px solid red' : '5px solid green'}}>
                           <div onClick={()=>setViewingSup(s)} style={{cursor:'pointer', flex:1}}>
                             <strong>{s.name}</strong>
                             <div style={{color: bal > 0 ? 'red' : 'green', fontWeight:'bold'}}>بقایا: {bal.toLocaleString()} Rs</div>
                           </div>
-                          <button className="btn btn-red" onClick={() => { if(confirm('ڈیلیٹ؟')) sync(suppliers.filter(x=>x.id!==s.id), stock, ledger.filter(x=>x.supplierId!==s.id)) }}>🗑</button>
                         </div>
                       );
                     })}
@@ -150,12 +152,17 @@
             </>
           ) : (
             <div className="container">
-              <button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس</button>
+              <button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس لسٹ</button>
               <div className="card" style={{marginTop:'10px'}}>
-                <h3>{viewingSup.name} کا کھاتہ</h3>
+                <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingSup.name} کا لیجر</h3>
+                <div className="summary-box">
+                  <div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
+                  <div><small>ٹوٹل ادا</small><br/><strong style={{color:'green'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
+                  <div className="balance-highlight">بقایا: {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div>
+                </div>
                 <div style={{display:'flex', gap:'5px'}}>
                   <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل انٹری</button>
-                  <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ ادائیگی</button>
+                  <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ پیمنٹ</button>
                 </div>
               </div>
               <div className="card">
@@ -179,17 +186,6 @@
           {modal && (
             <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'400px'}}>
-                {modal.type === 'addSup' && (
-                  <div>
-                    <h3>نیا سپلائر شامل کریں</h3>
-                    <input id="supNameIn" placeholder="سپلائر کا نام..." />
-                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=>{
-                      const n = document.getElementById('supNameIn').value;
-                      if(n) { sync([...suppliers, {id: Date.now(), name: n}], stock, ledger); setModal(null); }
-                    }}>محفوظ کریں</button>
-                    <button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button>
-                  </div>
-                )}
                 {modal.type === 'addStock' && (
                   <form onSubmit={(e)=>{
                     e.preventDefault();
@@ -202,14 +198,41 @@
                     setModal(null);
                   }}>
                     <h3>نیا آئٹم</h3>
-                    <input name="n" placeholder="آئٹم کا نام" required />
-                    <input name="s" list="supList" placeholder="سپلائر کا نام" required />
-                    <datalist id="supList">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist>
+                    <input name="n" placeholder="آئٹم نام" required />
+                    <input name="s" placeholder="سپلائر نام" required />
                     <input name="o" type="number" placeholder="ٹوٹل آرڈر" required />
                     <input name="r" type="number" placeholder="ریٹ" required />
                     <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>سیو</button>
                     <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
+                )}
+                {modal.type === 'editStock' && (
+                  <form onSubmit={(e)=>{
+                    e.preventDefault();
+                    const f = new FormData(e.target);
+                    sync(suppliers, stock.map(s => s.id === modal.data.id ? {...s, name: f.get('n'), supplier: f.get('s'), totalOrdered: parseInt(f.get('o')), rate: parseInt(f.get('r')), qty: parseInt(f.get('q'))} : s), ledger);
+                    setModal(null);
+                  }}>
+                    <h3>ایڈٹ اسٹاک</h3>
+                    <label>آئٹم نام:</label><input name="n" defaultValue={modal.data.name} />
+                    <label>سپلائر:</label><input name="s" defaultValue={modal.data.supplier} />
+                    <label>ٹوٹل آرڈر:</label><input name="o" type="number" defaultValue={modal.data.totalOrdered} />
+                    <label>موجودہ اسٹاک:</label><input name="q" type="number" defaultValue={modal.data.qty} />
+                    <label>ریٹ:</label><input name="r" type="number" defaultValue={modal.data.rate} />
+                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>اپ ڈیٹ</button>
+                    <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  </form>
+                )}
+                {modal.type === 'addSup' && (
+                   <div>
+                    <h3>نیا سپلائر</h3>
+                    <input id="newSupIn" placeholder="نام..." />
+                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=>{
+                      const n = document.getElementById('newSupIn').value;
+                      if(n) { sync([...suppliers, {id: Date.now(), name: n}], stock, ledger); setModal(null); }
+                    }}>سیو</button>
+                    <button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button>
+                   </div>
                 )}
                 {modal.type === 'addEntry' && (
                   <form onSubmit={(e)=>{
@@ -218,11 +241,11 @@
                     sync(suppliers, stock, [{id: Date.now(), supplierId: viewingSup.id, date: f.get('d'), type: modal.entryType, amount: parseInt(f.get('a')), note: f.get('n')}, ...ledger]);
                     setModal(null);
                   }}>
-                    <h3>{modal.entryType==='bill'?'بل انٹری':'ادائیگی'}</h3>
+                    <h3>{modal.entryType==='bill'?'بل':'پیمنٹ'}</h3>
                     <input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} />
                     <input type="number" name="a" placeholder="رقم" required />
                     <input name="n" placeholder="تفصیل" />
-                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>سیو کریں</button>
+                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>سیو</button>
                     <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
