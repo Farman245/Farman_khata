@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - سپلائر ایڈیٹ فکس</title>
+  <title>نیو قاری ہوزری - مکمل ERP (سرمایہ کھاتہ کے ساتھ)</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -15,7 +15,7 @@
     body { margin: 0; background: #f4f7f6; font-family: system-ui; direction: rtl; }
     .header { background: #2c3e50; color: white; padding: 12px; text-align: center; }
     .tab-bar { display: flex; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; overflow-x: auto; white-space: nowrap; }
-    .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; font-size: 14px; border-left: 1px solid #eee; min-width: 100px; }
+    .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; font-size: 14px; border-left: 1px solid #eee; min-width: 90px; }
     .tab-btn:last-child { border-left: none; }
     .active-tab { border-bottom: 4px solid #3498db; color: #3498db; }
     .container { padding: 10px; max-width: 650px; margin: auto; }
@@ -149,7 +149,7 @@
       };
       
       const deleteSupEntry = (entryId) => { if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟')) { sync(suppliers, stock, ledger.filter(x => x.id !== entryId), stockHistory, customers, customerLedger, capitalAccounts, capitalLedger); } };
-      const deleteCustEntry = (entryId) => { if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟')) { sync(suppliers, stock, ledger, stockHistory, customers, customerLedger.filter(x => x.id !== entryId)); } };
+      const deleteCustEntry = (entryId) => { if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟')) { sync(suppliers, stock, ledger, stockHistory, customers, customerLedger.filter(x => x.id !== entryId), capitalAccounts, capitalLedger); } };
       const deleteCapEntry = (entryId) => { if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟')) { sync(suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger.filter(x => x.id !== entryId)); } };
 
       const filteredStock = stock.filter(s => s.name.includes(stockSearch) || s.supplier.includes(stockSearch));
@@ -238,7 +238,10 @@
                     {activeTab === 'capital' && (
                       <div className="no-print">
                         <div className="total-banner no-print" style={{backgroundColor: '#9b59b6'}}>دکان میں موجود کل سرمایہ: {totalCapital.toLocaleString()} Rs</div>
-                        <div style={{display:'flex', gap:'5px', marginBottom:'5px'}}><button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ سرمایہ آیا / ڈالا</button><button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- نکالا (پراپرٹی/خرچ)</button></div>
+                        <div style={{display:'flex', gap:'5px', marginBottom:'5px'}}>
+                            <button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ سرمایہ آیا / ڈالا</button>
+                            <button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- نکالا (پراپرٹی/خرچ)</button>
+                        </div>
                         <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px', fontSize:'14px'}} onClick={()=>setModal({type:'transferCap'})}>⇆ ایک اکاؤنٹ سے دوسرے میں منتقلی</button>
                         <button className="btn btn-purple" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addCapAccount'})}>+ نیا سرمایہ کا اکاؤنٹ بنائیں</button>
                         <div><input type="text" className="search-input" placeholder="🔍 اکاؤنٹ تلاش کریں..." value={capSearch} onChange={(e) => setCapSearch(e.target.value)} /></div>
@@ -306,7 +309,9 @@
                 <div className="container">
                   <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}><button className="btn btn-gray" onClick={()=>setViewingCap(null)}>← واپس لسٹ</button><button className="btn btn-blue" onClick={handlePrint}>🖨 ریکارڈ پرنٹ کریں</button></div>
                   <div className="card" style={{marginTop:'10px'}}>
-                    <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingCap.name} کا ریکارڈ (سرمایہ)</h3>
+                    <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingCap.name} کا ریکارڈ (سرمایہ)
+                      <button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCapName', data: viewingCap})}>✎ نام بدلیں</button>
+                    </h3>
                     <div className="summary-box">
                       <div><small>اس میں آیا</small><br/><strong style={{color:'green'}}>{capitalLedger.filter(l=>l.accountId===viewingCap.id && l.type==='in').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
                       <div><small>اس سے نکالا</small><br/><strong style={{color:'red'}}>{capitalLedger.filter(l=>l.accountId===viewingCap.id && l.type==='out').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
@@ -330,82 +335,42 @@
               <div className="card" style={{width:'90%', maxWidth:'450px', maxHeight:'90vh', overflowY:'auto'}}>
                 
                 {modal.type === 'editSupName' && (
-                  <form className="no-print" onSubmit={(e)=>{
-                    e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name');
-                    const updatedSups = suppliers.map(s => s.id === modal.data.id ? {...s, name: newName} : s);
-                    const updatedStock = stock.map(st => st.supplier === modal.data.name ? {...st, supplier: newName} : st);
-                    setViewingSup({...viewingSup, name: newName});
-                    sync(updatedSups, updatedStock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger);
-                    setModal(null);
-                  }}>
-                    <h3>سپلائر کا نام تبدیل کریں</h3>
-                    <label>نیا نام:</label>
-                    <input name="name" defaultValue={modal.data.name} required />
-                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button>
-                    <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name'); const updatedSups = suppliers.map(s => s.id === modal.data.id ? {...s, name: newName} : s); const updatedStock = stock.map(st => st.supplier === modal.data.name ? {...st, supplier: newName} : st); setViewingSup({...viewingSup, name: newName}); sync(updatedSups, updatedStock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger); setModal(null); }}>
+                    <h3>سپلائر کا نام تبدیل کریں</h3><label>نیا نام:</label><input name="name" defaultValue={modal.data.name} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
-
                 {modal.type === 'editCustName' && (
-                  <form className="no-print" onSubmit={(e)=>{
-                    e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name');
-                    const updatedCusts = customers.map(c => c.id === modal.data.id ? {...c, name: newName} : c);
-                    setViewingCust({...viewingCust, name: newName});
-                    sync(suppliers, stock, ledger, stockHistory, updatedCusts, customerLedger, capitalAccounts, capitalLedger);
-                    setModal(null);
-                  }}>
-                    <h3>کسٹمر کا نام تبدیل کریں</h3>
-                    <label>نیا نام:</label>
-                    <input name="name" defaultValue={modal.data.name} required />
-                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button>
-                    <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name'); const updatedCusts = customers.map(c => c.id === modal.data.id ? {...c, name: newName} : c); setViewingCust({...viewingCust, name: newName}); sync(suppliers, stock, ledger, stockHistory, updatedCusts, customerLedger, capitalAccounts, capitalLedger); setModal(null); }}>
+                    <h3>کسٹمر کا نام تبدیل کریں</h3><label>نیا نام:</label><input name="name" defaultValue={modal.data.name} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  </form>
+                )}
+                {modal.type === 'editCapName' && (
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name'); const updatedCaps = capitalAccounts.map(c => c.id === modal.data.id ? {...c, name: newName} : c); setViewingCap({...viewingCap, name: newName}); sync(suppliers, stock, ledger, stockHistory, customers, customerLedger, updatedCaps, capitalLedger); setModal(null); }}>
+                    <h3>سرمایہ اکاؤنٹ کا نام تبدیل کریں</h3><label>نیا نام:</label><input name="name" defaultValue={modal.data.name} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
                 {modal.type === 'editSupEntry' && (
-                  <form className="no-print" onSubmit={(e)=>{
-                    e.preventDefault(); const f = new FormData(e.target);
-                    const updatedLedger = ledger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l);
-                    sync(suppliers, stock, updatedLedger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger);
-                    setModal(null);
-                  }}>
-                    <h3>سپلائر انٹری درست کریں ({modal.data.type==='bill'?'بل':'ادائیگی'})</h3>
-                    <label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required />
-                    <label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required />
-                    <label>تفصیل:</label><input name="note" defaultValue={modal.data.note} />
-                    <label>لنک:</label><input type="url" name="fileUrl" defaultValue={modal.data.fileUrl || ''} placeholder="https://..." />
-                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button>
-                    <button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = ledger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(suppliers, stock, updatedLedger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger); setModal(null); }}>
+                    <h3>سپلائر انٹری درست کریں ({modal.data.type==='bill'?'بل':'ادائیگی'})</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><label>لنک:</label><input type="url" name="fileUrl" defaultValue={modal.data.fileUrl || ''} placeholder="https://..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
                 {modal.type === 'transferCap' && (
-                  <form className="no-print" onSubmit={(e)=>{
-                    e.preventDefault(); const f = new FormData(e.target); const fromAcc = parseInt(f.get('fromAcc')); const toAcc = parseInt(f.get('toAcc')); const amount = parseInt(f.get('amount')); const dateStr = f.get('d'); const note = f.get('n') || 'اکاؤنٹ ٹرانسفر';
-                    if(isNaN(fromAcc) || isNaN(toAcc)) { alert('دونوں اکاؤنٹ منتخب کریں'); return; } if(fromAcc === toAcc) { alert('دونوں اکاؤنٹ مختلف ہونے چاہئیں'); return; }
-                    const entryOut = { id: Date.now(), accountId: fromAcc, date: dateStr, type: 'out', amount: amount, note: `منتقلی (نکالے): ${note}` };
-                    const entryIn = { id: Date.now() + 1, accountId: toAcc, date: dateStr, type: 'in', amount: amount, note: `منتقلی (آئے): ${note}` };
-                    sync(suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [entryIn, entryOut, ...capitalLedger]); setModal(null);
-                  }}>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const fromAcc = parseInt(f.get('fromAcc')); const toAcc = parseInt(f.get('toAcc')); const amount = parseInt(f.get('amount')); const dateStr = f.get('d'); const note = f.get('n') || 'اکاؤنٹ ٹرانسفر'; if(isNaN(fromAcc) || isNaN(toAcc)) { alert('دونوں اکاؤنٹ منتخب کریں'); return; } if(fromAcc === toAcc) { alert('دونوں اکاؤنٹ مختلف ہونے چاہئیں'); return; } const entryOut = { id: Date.now(), accountId: fromAcc, date: dateStr, type: 'out', amount: amount, note: `منتقلی (نکالے): ${note}` }; const entryIn = { id: Date.now() + 1, accountId: toAcc, date: dateStr, type: 'in', amount: amount, note: `منتقلی (آئے): ${note}` }; sync(suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [entryIn, entryOut, ...capitalLedger]); setModal(null); }}>
                     <h3 style={{color: '#3498db', marginTop: 0}}>⇆ اکاؤنٹ ٹرانسفر</h3>
                     {capitalAccounts.length < 2 ? (<p style={{color:'red'}}>ٹرانسفر کے لیے کم از کم 2 اکاؤنٹ ہونے ضروری ہیں۔</p>) : (
                         <><label>کہاں سے نکالنے ہیں؟ (From):</label><select name="fromAcc" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>کس اکاؤنٹ میں ڈالنے ہیں؟ (To):</label><select name="toAcc" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="amount" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: دکان سے میزان بینک بھیجے..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>ٹرانسفر کریں</button></>
-                    )}
-                    <button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                    )}<button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
                 {modal.type === 'addCapEntryMain' && (
-                  <form className="no-print" onSubmit={(e)=>{
-                    e.preventDefault(); const f = new FormData(e.target); const fileUrl = f.get('fileUrl'); const accountId = parseInt(f.get('accountId'));
-                    if(isNaN(accountId)) { alert('براہ کرم اکاؤنٹ منتخب کریں'); return; }
-                    sync(suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [{ id:Date.now(), accountId: accountId, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:fileUrl?fileUrl:null }, ...capitalLedger]); setModal(null);
-                  }}>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const fileUrl = f.get('fileUrl'); const accountId = parseInt(f.get('accountId')); if(isNaN(accountId)) { alert('براہ کرم اکاؤنٹ منتخب کریں'); return; } sync(suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [{ id:Date.now(), accountId: accountId, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:fileUrl?fileUrl:null }, ...capitalLedger]); setModal(null); }}>
                     <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'سرمایہ ڈالا (آیا)':'سرمایہ نکالا (خرچ کیا)'}</h3>
                     {capitalAccounts.length === 0 ? (<p style={{color:'red'}}>پہلے "نیا سرمایہ کا اکاؤنٹ" بنائیں۔</p>) : (
                         <><label>اکاؤنٹ منتخب کریں:</label><select name="accountId" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="یہاں تفصیل لکھیں..." /><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button></>
-                    )}
-                    <button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                    )}<button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
