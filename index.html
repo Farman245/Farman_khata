@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>نیو قاری ہوزری - مکمل ERP (سرمایہ کھاتہ کے ساتھ)</title>
+  <title>نیو قاری ہوزری - رکے کھاتوں کا نظام</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -15,7 +15,7 @@
     body { margin: 0; background: #f4f7f6; font-family: system-ui; direction: rtl; }
     .header { background: #2c3e50; color: white; padding: 12px; text-align: center; }
     .tab-bar { display: flex; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; overflow-x: auto; white-space: nowrap; }
-    .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; font-size: 14px; border-left: 1px solid #eee; min-width: 90px; }
+    .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; font-size: 14px; border-left: 1px solid #eee; min-width: 80px; }
     .tab-btn:last-child { border-left: none; }
     .active-tab { border-bottom: 4px solid #3498db; color: #3498db; }
     .container { padding: 10px; max-width: 650px; margin: auto; }
@@ -27,6 +27,7 @@
     .btn-orange { background: #f39c12; color: white; }
     .btn-gray { background: #95a5a6; color: white; }
     .btn-purple { background: #9b59b6; color: white; }
+    .btn-dark { background: #34495e; color: white; }
     input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-top: 5px; margin-bottom: 10px; box-sizing: border-box; font-size: 14px; }
     .search-input { border: 2px solid #3498db; background-color: #f0f8ff; font-weight: bold; }
     .total-banner { background: #2ecc71; color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; }
@@ -82,6 +83,7 @@
       const [stockSearch, setStockSearch] = useState('');
       const [supplierSearch, setSupplierSearch] = useState('');
       const [custSearch, setCustSearch] = useState('');
+      const [stuckSearch, setStuckSearch] = useState('');
       const [capSearch, setCapSearch] = useState('');
 
       useEffect(() => {
@@ -103,10 +105,28 @@
         storeRef.set({ suppliers: newS, stock: newSt, ledger: newL, stockHistory: newSH, customers: newCust, customerLedger: newCL, capitalAccounts: newCap, capitalLedger: newCapL });
       };
 
+      // Helper function to get customer balance
+      const getCustBal = (cId) => customerLedger.filter(l => l.customerId === cId).reduce((a,x) => x.type === 'bill' ? a + x.amount : a - x.amount, 0);
+
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
       const totalPayable = ledger.reduce((acc, c) => c.type === 'bill' ? acc + c.amount : acc - c.amount, 0); 
-      const totalReceivable = customerLedger.reduce((acc, c) => c.type === 'bill' ? acc + c.amount : acc - c.amount, 0); 
       const totalCapital = capitalLedger.reduce((acc, c) => c.type === 'in' ? acc + c.amount : acc - c.amount, 0);
+
+      // Filtering Active vs Stuck customers
+      const activeCustomers = customers.filter(c => !c.isStuck);
+      const stuckCustomers = customers.filter(c => c.isStuck);
+
+      const totalActiveReceivable = activeCustomers.reduce((a,c) => a + getCustBal(c.id), 0);
+      const totalStuckReceivable = stuckCustomers.reduce((a,c) => a + getCustBal(c.id), 0);
+
+      const filteredActiveCustomers = activeCustomers.filter(c => c.name.includes(custSearch));
+      const filteredStuckCustomers = stuckCustomers.filter(c => c.name.includes(stuckSearch));
+
+      const toggleStuckStatus = (cust) => {
+          const updatedCusts = customers.map(c => c.id === cust.id ? {...c, isStuck: !c.isStuck} : c);
+          sync(suppliers, stock, ledger, stockHistory, updatedCusts, customerLedger, capitalAccounts, capitalLedger);
+          setViewingCust({...cust, isStuck: !cust.isStuck}); 
+      };
 
       const handlePrint = () => { window.print(); };
       const downloadBackup = () => {
@@ -119,9 +139,16 @@
            const paid = ledger.filter(l=>l.supplierId===s.id && l.type==='payment').reduce((a,c)=>a+c.amount,0);
            csv += `${s.name},${billed},${paid},${bal}\n`;
         });
-        csv += "\nکسٹمر کھاتہ رپورٹ (لینے والی رقم)\nکسٹمر کا نام,ٹوٹل بل,ٹوٹل وصولی,بقایا رقم\n";
-        customers.forEach(c => {
-           const bal = customerLedger.filter(l=>l.customerId===c.id).reduce((a,x)=>x.type==='bill'?a+x.amount:a-x.amount,0);
+        csv += "\nایکٹو کسٹمر کھاتہ رپورٹ (لینے والی رقم)\nکسٹمر کا نام,ٹوٹل بل,ٹوٹل وصولی,بقایا رقم\n";
+        activeCustomers.forEach(c => {
+           const bal = getCustBal(c.id);
+           const billed = customerLedger.filter(l=>l.customerId===c.id && l.type==='bill').reduce((a,x)=>a+x.amount,0);
+           const paid = customerLedger.filter(l=>l.customerId===c.id && l.type==='payment').reduce((a,x)=>a+x.amount,0);
+           csv += `${c.name},${billed},${paid},${bal}\n`;
+        });
+        csv += "\nرکے ہوئے کھاتوں کی رپورٹ (پھنسی ہوئی رقم)\nکسٹمر کا نام,ٹوٹل بل,ٹوٹل وصولی,بقایا رقم\n";
+        stuckCustomers.forEach(c => {
+           const bal = getCustBal(c.id);
            const billed = customerLedger.filter(l=>l.customerId===c.id && l.type==='bill').reduce((a,x)=>a+x.amount,0);
            const paid = customerLedger.filter(l=>l.customerId===c.id && l.type==='payment').reduce((a,x)=>a+x.amount,0);
            csv += `${c.name},${billed},${paid},${bal}\n`;
@@ -154,7 +181,6 @@
 
       const filteredStock = stock.filter(s => s.name.includes(stockSearch) || s.supplier.includes(stockSearch));
       const filteredSuppliers = suppliers.filter(s => s.name.includes(supplierSearch));
-      const filteredCustomers = customers.filter(c => c.name.includes(custSearch));
       const filteredCapitals = capitalAccounts.filter(c => c.name.includes(capSearch));
 
       if (!user) return <div style={{textAlign:'center', padding:'50px'}}><button className="btn btn-blue" onClick={()=>firebase.auth().signInAnonymously()}>سسٹم کھولیں</button></div>;
@@ -177,6 +203,7 @@
                     <button className={`tab-btn ${activeTab==='stock'?'active-tab':''}`} onClick={()=>setActiveTab('stock')}>اسٹاک</button>
                     <button className={`tab-btn ${activeTab==='ledger'?'active-tab':''}`} onClick={()=>setActiveTab('ledger')}>سپلائر</button>
                     <button className={`tab-btn ${activeTab==='customers'?'active-tab':''}`} onClick={()=>setActiveTab('customers')}>کسٹمر</button>
+                    <button className={`tab-btn ${activeTab==='stuck'?'active-tab':''}`} onClick={()=>setActiveTab('stuck')}>رکے کھاتے</button>
                     <button className={`tab-btn ${activeTab==='capital'?'active-tab':''}`} onClick={()=>setActiveTab('capital')}>سرمایہ</button>
                   </div>
                   <div className="container">
@@ -225,23 +252,35 @@
 
                     {activeTab === 'customers' && (
                       <div className="no-print">
-                        <div className="total-banner no-print" style={{backgroundColor: '#2ecc71'}}>کل وصول طلب (لینے ہیں): {totalReceivable.toLocaleString()} Rs</div>
+                        <div className="total-banner no-print" style={{backgroundColor: '#2ecc71'}}>ایکٹو کسٹمرز کا بیلنس: {totalActiveReceivable.toLocaleString()} Rs</div>
                         <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addCust'})}>+ نیا کسٹمر شامل کریں</button>
-                        <div><input type="text" className="search-input" placeholder="🔍 کسٹمر تلاش کریں..." value={custSearch} onChange={(e) => setCustSearch(e.target.value)} /></div>
-                        {filteredCustomers.map(c => {
-                          const bal = customerLedger.filter(l => l.customerId === c.id).reduce((a,x) => x.type === 'bill' ? a + x.amount : a - x.amount, 0);
+                        <div><input type="text" className="search-input" placeholder="🔍 ایکٹو کسٹمر تلاش کریں..." value={custSearch} onChange={(e) => setCustSearch(e.target.value)} /></div>
+                        {filteredActiveCustomers.map(c => {
+                          const bal = getCustBal(c.id);
                           return (<div className="card" key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: bal > 0 ? '5px solid red' : '5px solid green'}}><div onClick={()=>setViewingCust(c)} style={{cursor:'pointer', flex:1}}><strong>{c.name}</strong><div style={{color: bal > 0 ? 'red' : 'green', fontWeight:'bold'}}>بقایا: {bal.toLocaleString()} Rs</div></div></div>);
                         })}
+                        {filteredActiveCustomers.length === 0 && (<div style={{textAlign:'center', padding:'20px', color:'#777'}}>کوئی ایکٹو کسٹمر نہیں!</div>)}
+                      </div>
+                    )}
+
+                    {/* نیا ٹیب: رکے ہوئے کھاتے */}
+                    {activeTab === 'stuck' && (
+                      <div className="no-print">
+                        <div className="total-banner no-print" style={{backgroundColor: '#34495e'}}>رکے ہوئے کھاتوں میں پھنسی رقم: {totalStuckReceivable.toLocaleString()} Rs</div>
+                        <div><input type="text" className="search-input" style={{borderColor: '#34495e'}} placeholder="🔍 رکا ہوا کھاتہ تلاش کریں..." value={stuckSearch} onChange={(e) => setStuckSearch(e.target.value)} /></div>
+                        <p style={{color:'#7f8c8d', fontSize:'13px', textAlign:'center'}}>یہ وہ پرانے کسٹمرز ہیں جن کی ریکوری کافی عرصے سے رکی ہوئی ہے۔</p>
+                        {filteredStuckCustomers.map(c => {
+                          const bal = getCustBal(c.id);
+                          return (<div className="card" key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: '5px solid #34495e', background:'#f9f9f9'}}><div onClick={()=>setViewingCust(c)} style={{cursor:'pointer', flex:1}}><strong>{c.name}</strong><div style={{color: '#c0392b', fontWeight:'bold'}}>پھنسی ہوئی رقم: {bal.toLocaleString()} Rs</div></div></div>);
+                        })}
+                        {filteredStuckCustomers.length === 0 && (<div style={{textAlign:'center', padding:'20px', color:'#777'}}>الحمدللہ! کوئی کھاتہ رکا ہوا نہیں ہے۔</div>)}
                       </div>
                     )}
 
                     {activeTab === 'capital' && (
                       <div className="no-print">
                         <div className="total-banner no-print" style={{backgroundColor: '#9b59b6'}}>دکان میں موجود کل سرمایہ: {totalCapital.toLocaleString()} Rs</div>
-                        <div style={{display:'flex', gap:'5px', marginBottom:'5px'}}>
-                            <button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ سرمایہ آیا / ڈالا</button>
-                            <button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- نکالا (پراپرٹی/خرچ)</button>
-                        </div>
+                        <div style={{display:'flex', gap:'5px', marginBottom:'5px'}}><button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ سرمایہ آیا / ڈالا</button><button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- نکالا (پراپرٹی/خرچ)</button></div>
                         <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px', fontSize:'14px'}} onClick={()=>setModal({type:'transferCap'})}>⇆ ایک اکاؤنٹ سے دوسرے میں منتقلی</button>
                         <button className="btn btn-purple" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addCapAccount'})}>+ نیا سرمایہ کا اکاؤنٹ بنائیں</button>
                         <div><input type="text" className="search-input" placeholder="🔍 اکاؤنٹ تلاش کریں..." value={capSearch} onChange={(e) => setCapSearch(e.target.value)} /></div>
@@ -282,15 +321,21 @@
               ) : viewingCust ? (
                 <div className="container">
                   <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}><button className="btn btn-gray" onClick={()=>setViewingCust(null)}>← واپس لسٹ</button><button className="btn btn-blue" onClick={handlePrint}>🖨 بل پرنٹ کریں</button></div>
-                  <div className="card" style={{marginTop:'10px'}}>
-                    <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>
-                      {viewingCust.name} کا کھاتہ (کسٹمر)
-                      <button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCustName', data: viewingCust})}>✎ نام بدلیں</button>
+                  <div className="card" style={{marginTop:'10px', border: viewingCust.isStuck ? '2px solid #e74c3c' : 'none', background: viewingCust.isStuck ? '#fff5f5' : '#fff'}}>
+                    <h3 style={{margin:'0 0 10px 0', textAlign:'center', color: viewingCust.isStuck ? '#c0392b' : '#333'}}>
+                      {viewingCust.name} {viewingCust.isStuck ? '(رکا ہوا کھاتہ)' : ''}
+                      <button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCustName', data: viewingCust})}>✎ نام</button>
+                      
+                      {/* رکے کھاتے میں ڈالنے / نکالنے کا بٹن */}
+                      <button className={`btn ${viewingCust.isStuck ? 'btn-green' : 'btn-dark'} no-print`} style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>toggleStuckStatus(viewingCust)}>
+                        {viewingCust.isStuck ? '✅ واپس ایکٹو کریں' : '⚠️ رکے کھاتوں میں ڈالیں'}
+                      </button>
                     </h3>
+                    
                     <div className="summary-box">
                       <div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{customerLedger.filter(l=>l.customerId===viewingCust.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
                       <div><small>ٹوٹل وصولی</small><br/><strong style={{color:'green'}}>{customerLedger.filter(l=>l.customerId===viewingCust.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div>
-                      <div className="balance-highlight balance-highlight-green">بقایا (لینا ہے): {customerLedger.filter(l=>l.customerId===viewingCust.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div>
+                      <div className="balance-highlight balance-highlight-green" style={{borderColor: viewingCust.isStuck ? '#c0392b' : '#2ecc71', color: viewingCust.isStuck ? '#c0392b' : '#2ecc71'}}>بقایا: {getCustBal(viewingCust.id).toLocaleString()} Rs</div>
                     </div>
                     <div className="no-print" style={{display:'flex', gap:'5px'}}>
                       <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'bill'})}>+ کسٹمر بل</button>
