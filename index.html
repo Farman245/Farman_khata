@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="ur" dir="rtl">
 <head>
-  <link rel="manifest" href="manifest.json">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>میرا کھاتہ - ڈیجیٹل روزنامچہ (Forgot Password)</title>
+  <title>میرا کھاتہ - ڈیجیٹل روزنامچہ</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2c3e50">
+  
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -65,7 +68,7 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [authMode, setAuthMode] = useState('login'); // login, signup, یا reset
+      const [authMode, setAuthMode] = useState('login');
       const [loading, setLoading] = useState(true);
 
       const [activeTab, setActiveTab] = useState('stock');
@@ -133,14 +136,13 @@
           }
       };
 
-      // پاس ورڈ ری سیٹ کرنے کا فنکشن
       const handlePasswordReset = (e) => {
           e.preventDefault();
           const email = e.target.resetEmail.value;
           firebase.auth().sendPasswordResetEmail(email)
           .then(() => {
-              alert("پاس ورڈ ری سیٹ کرنے کا لنک آپ کے ای میل پر بھیج دیا گیا ہے۔ اپنا ان باکس چیک کریں!");
-              setAuthMode('login'); // واپس لاگ ان سکرین پر لے جائیں
+              alert("پاس ورڈ ری سیٹ کرنے کا لنک آپ کے ای میل پر بھیج دیا گیا ہے۔");
+              setAuthMode('login'); 
           })
           .catch(err => alert("ای میل بھیجنے میں مسئلہ: " + err.message));
       };
@@ -205,7 +207,6 @@
 
       if (loading) return <div style={{textAlign:'center', padding:'50px'}}>لوڈ ہو رہا ہے...</div>;
 
-      // --- Authentication Screen ---
       if (!user) {
         return (
           <div style={{background: '#2c3e50', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'}}>
@@ -213,23 +214,17 @@
               <h1 style={{color: '#2c3e50', margin: '0 0 10px 0'}}>ڈیجیٹل کھاتہ</h1>
               <p style={{color: '#7f8c8d', marginBottom: '20px'}}>اپنے دکان کا حساب کتاب محفوظ رکھیں</p>
               
-              {/* اگر یوزر 'پاس ورڈ بھول گئے' پر کلک کرے */}
               {authMode === 'reset' ? (
                 <div>
                     <h2 style={{color: '#3498db'}}>پاس ورڈ ری سیٹ کریں</h2>
                     <p style={{color: '#7f8c8d', fontSize: '14px', marginBottom: '15px'}}>اپنا رجسٹرڈ ای میل درج کریں، ہم آپ کو نیا پاس ورڈ بنانے کا لنک بھیجیں گے۔</p>
                     <form onSubmit={handlePasswordReset}>
                         <input type="email" name="resetEmail" placeholder="ای میل ایڈریس" required style={{border: '2px solid #ecf0f1'}} />
-                        <button className="btn btn-blue" style={{width: '100%', padding: '12px', fontSize: '16px', marginTop: '10px'}}>
-                            لنک بھیجیں
-                        </button>
+                        <button className="btn btn-blue" style={{width: '100%', padding: '12px', fontSize: '16px', marginTop: '10px'}}>لنک بھیجیں</button>
                     </form>
-                    <p style={{marginTop: '20px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode('login')}>
-                        ← واپس لاگ ان پر جائیں
-                    </p>
+                    <p style={{marginTop: '20px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode('login')}>← واپس لاگ ان پر جائیں</p>
                 </div>
               ) : (
-                // اگر یوزر لاگ ان یا سائن اپ سکرین پر ہو
                 <div>
                     <h2 style={{color: '#3498db'}}>{authMode === 'login' ? 'لاگ ان کریں' : 'نیا اکاؤنٹ بنائیں'}</h2>
                     <form onSubmit={handleAuth}>
@@ -239,17 +234,8 @@
                         {authMode === 'login' ? 'لاگ ان (Login)' : 'اکاؤنٹ بنائیں (Sign Up)'}
                         </button>
                     </form>
-                    
-                    {/* پاس ورڈ بھولنے کا لنک صرف لاگ ان سکرین پر نظر آئے گا */}
-                    {authMode === 'login' && (
-                        <p style={{marginTop: '15px', cursor: 'pointer', color: '#3498db', fontWeight: 'bold', fontSize: '14px'}} onClick={() => setAuthMode('reset')}>
-                            پاس ورڈ بھول گئے؟ (Forgot Password)
-                        </p>
-                    )}
-
-                    <p style={{marginTop: '15px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
-                        {authMode === 'login' ? 'نیا اکاؤنٹ نہیں ہے؟ یہاں کلک کریں' : 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں'}
-                    </p>
+                    {authMode === 'login' && (<p style={{marginTop: '15px', cursor: 'pointer', color: '#3498db', fontWeight: 'bold', fontSize: '14px'}} onClick={() => setAuthMode('reset')}>پاس ورڈ بھول گئے؟ (Forgot Password)</p>)}
+                    <p style={{marginTop: '15px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>{authMode === 'login' ? 'نیا اکاؤنٹ نہیں ہے؟ یہاں کلک کریں' : 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں'}</p>
                 </div>
               )}
             </div>
@@ -257,11 +243,9 @@
         );
       }
 
-      // --- Main App ---
       return (
         <div>
           <div className={modal ? "no-print" : ""}>
-              
               <div className="print-only">
                  <h1 style={{margin:0, color:'#2c3e50'}}>{storeProfile.storeName}</h1>
                  <p style={{margin:'5px 0', fontSize:'14px'}}>{storeProfile.address}</p>
@@ -358,7 +342,7 @@
                       <div>
                         <div className="total-banner no-print" style={{backgroundColor: '#f39c12'}}>گلے (کیش) کا موجودہ بیلنس: {totalCash.toLocaleString()} Rs</div>
                         <div className="no-print" style={{display:'flex', gap:'5px', marginBottom:'10px'}}><button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCashEntry', entryType:'in'})}>+ کیش آئی (آمد)</button><button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCashEntry', entryType:'out'})}>- کیش گئی (خرچ)</button></div>
-                        <div className="card no-print" style={{marginBottom: '10px'}}><label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>مہینہ منتخب کریں (اس مہینے کا ریکارڈ دیکھنے کے لیے):</label><input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{border: '2px solid #f39c12', fontWeight:'bold', cursor:'pointer'}} /></div>
+                        <div className="card no-print" style={{marginBottom: '10px'}}><label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>مہینہ منتخب کریں:</label><input type="month" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} style={{border: '2px solid #f39c12', fontWeight:'bold', cursor:'pointer'}} /></div>
                         <div className="card">
                           <h3 className="print-only" style={{marginTop:0}}>روزنامچہ (مہینہ: {selectedMonth})</h3>
                           <h3 className="no-print" style={{margin:'0 0 10px 0', textAlign:'center'}}>اس مہینے کا کیش ریکارڈ</h3>
@@ -375,7 +359,7 @@
                       <div className="no-print">
                         <div className="total-banner no-print" style={{backgroundColor: '#34495e'}}>رکے کھاتوں میں پھنسی رقم: {totalStuckReceivable.toLocaleString()} Rs</div>
                         <div><input type="text" className="search-input" style={{borderColor: '#34495e'}} placeholder="🔍 رکا ہوا کھاتہ تلاش کریں..." value={stuckSearch} onChange={(e) => setStuckSearch(e.target.value)} /></div>
-                        {filteredStuckCustomers.map(c => { const bal = getCustBal(c.id); return (<div className="card" key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: '5px solid #34495e', background:'#f9f9f9'}}><div onClick={()=>setViewingCust(c)} style={{cursor:'pointer', flex:1}}><strong>{c.name}</strong><div style={{color: '#c0392b', fontWeight:'bold'}}>رقم: {bal.toLocaleString()} Rs</div></div></div>); })}
+                        {filteredStuckCustomers.map(c => { const bal = getCustBal(c.id); return (<div className="card" key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: '5px solid #34495e', background:'#f9f9f9'}}><div onClick={()=>setViewingCust(c)} style={{cursor:'pointer', flex:1}}><strong>{c.name}</strong><div style={{color: '#c0392b', fontWeight:'bold'}}>پھنسی ہوئی رقم: {bal.toLocaleString()} Rs</div></div></div>); })}
                       </div>
                     )}
 
@@ -418,14 +402,14 @@
               <div className="card" style={{width:'90%', maxWidth:'450px', maxHeight:'90vh', overflowY:'auto'}}>
                 
                 {modal.type === 'addCashEntry' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, [{ id:Date.now(), date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:f.get('fileUrl')||null }, ...cashLedger]); setModal(null); }}>
-                    <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'کیش آئی (آمد)':'کیش گئی (خرچ)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: بل، مزدوری..." required /><div style={{background:'#eef2f3', padding:'10px', borderRadius:'5px', marginTop:'10px'}}><label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>رسید کا لنک (اختیاری):</label><input type="url" name="fileUrl" placeholder="https://..." style={{border:'1px solid #bdc3c7', padding:'8px', width:'100%'}} /></div><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, [{ id:Date.now(), date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...cashLedger]); setModal(null); }}>
+                    <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'کیش آئی (آمد)':'کیش گئی (خرچ)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: بل، مزدوری..." required /><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
                 {modal.type === 'editCashEntry' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedCash = cashLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, updatedCash); setModal(null); }}>
-                    <h3>کیش انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} required /><label>لنک:</label><input type="url" name="fileUrl" defaultValue={modal.data.fileUrl || ''} placeholder="https://..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedCash = cashLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, updatedCash); setModal(null); }}>
+                    <h3>کیش انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
@@ -448,8 +432,8 @@
                 )}
 
                 {modal.type === 'editSupEntry' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = ledger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, updatedLedger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
-                    <h3>سپلائر انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><label>لنک:</label><input type="url" name="fileUrl" defaultValue={modal.data.fileUrl || ''} placeholder="https://..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = ledger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, updatedLedger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
+                    <h3>سپلائر انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
@@ -486,11 +470,11 @@
                 {modal.type === 'addStock' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const sName=f.get('s'); const nId=Date.now(); let nSups=[...suppliers]; if(!suppliers.find(x=>x.name===sName)) nSups.push({id: nId+1, name: sName}); sync(storeProfile, nSups, [...stock, {id: nId, name: f.get('n'), supplier: sName, qty: 0, sold: 0, rate: parseInt(f.get('r')), totalOrdered: parseInt(f.get('o'))}], ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>نیا آئٹم</h3><label>نام:</label> <input name="n" required /><label>سپلائر:</label> <input name="s" list="supList" required /><datalist id="supList">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist><label>ٹوٹل آرڈر:</label> <input name="o" type="number" required /><label>ریٹ:</label> <input name="r" type="number" required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>سیو</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
                 {modal.type === 'editStock' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock.map(s => s.id === modal.data.id ? {...s, name: f.get('n'), supplier: f.get('s'), totalOrdered: parseInt(f.get('o')), rate: parseInt(f.get('r')), qty: parseInt(f.get('q'))} : s), ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>ایڈٹ اسٹاک</h3><label>نام:</label><input name="n" defaultValue={modal.data.name} /><label>سپلائر:</label><input name="s" defaultValue={modal.data.supplier} /><label>ٹوٹل آرڈر:</label><input name="o" type="number" defaultValue={modal.data.totalOrdered} /><label>موجودہ اسٹاک:</label><input name="q" type="number" defaultValue={modal.data.qty} /><label>ریٹ:</label><input name="r" type="number" defaultValue={modal.data.rate} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>اپ ڈیٹ</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
 
-                {modal.type === 'addEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, [{ id:Date.now(), supplierId:viewingSup.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:f.get('fileUrl')||null }, ...ledger], stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'سپلائر بل انٹری':'سپلائر کو ادائیگی'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
-                {modal.type === 'addCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, [{ id:Date.now(), customerId:viewingCust.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:f.get('fileUrl')||null }, ...customerLedger], capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'کسٹمر کا بل (لینے ہیں)':'کسٹمر سے وصولی (آگئے)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'addEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, [{ id:Date.now(), supplierId:viewingSup.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...ledger], stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'سپلائر بل انٹری':'سپلائر کو ادائیگی'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'addCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, [{ id:Date.now(), customerId:viewingCust.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...customerLedger], capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'کسٹمر کا بل (لینے ہیں)':'کسٹمر سے وصولی (آگئے)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل / مال کا نام:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
                 
-                {modal.type === 'editCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = customerLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, updatedLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
-                {modal.type === 'editCapEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = capitalLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, updatedLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'editCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = customerLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, updatedLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'editCapEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = capitalLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, updatedLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
 
               </div>
             </div>
@@ -500,6 +484,16 @@
     }
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
+  </script>
+  
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => console.log('Service Worker Registered!'))
+          .catch((err) => console.log('Service Worker Failed!', err));
+      });
+    }
   </script>
 </body>
 </html>
