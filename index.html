@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>میرا کھاتہ - ڈیجیٹل روزنامچہ</title>
+  <title>میرا کھاتہ - ڈیجیٹل روزنامچہ (Forgot Password)</title>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -56,7 +56,6 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    // آپ کی فائر بیس کیز بالکل وہی ہیں
     const firebaseConfig = { apiKey: "AIzaSyCb7MQuMjkDuDGc0PXFK07xb8eN1_srbGU", authDomain: "farman-93e1d.firebaseapp.com", projectId: "farman-93e1d", storageBucket: "farman-93e1d.firebasestorage.app", messagingSenderId: "838060218283", appId: "1:838060218283:web:92df7394c10ea4212264ee" };
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.firestore();
@@ -65,12 +64,10 @@
 
     function App() {
       const [user, setUser] = useState(null);
-      const [authMode, setAuthMode] = useState('login'); // login یا signup
+      const [authMode, setAuthMode] = useState('login'); // login, signup, یا reset
       const [loading, setLoading] = useState(true);
 
       const [activeTab, setActiveTab] = useState('stock');
-      
-      // دکان کی پروفائل
       const [storeProfile, setStoreProfile] = useState({ storeName: 'میری دکان', phone: '', address: '' });
       
       const [suppliers, setSuppliers] = useState([]);
@@ -100,7 +97,6 @@
         firebase.auth().onAuthStateChanged(u => {
           setUser(u);
           if(u) {
-            // اب ہر یوزر کا ڈیٹا اس کی اپنی آئی ڈی (u.uid) کے فولڈر 'user_data' میں سیو ہوگا
             db.collection('user_data').doc(u.uid).get().then(doc => {
               if (doc.exists) {
                 const d = doc.data();
@@ -122,7 +118,6 @@
         }
       };
 
-      // لاگ ان / سائن اپ فنکشنز
       const handleAuth = (e) => {
           e.preventDefault();
           const email = e.target.email.value;
@@ -137,10 +132,21 @@
           }
       };
 
+      // پاس ورڈ ری سیٹ کرنے کا فنکشن
+      const handlePasswordReset = (e) => {
+          e.preventDefault();
+          const email = e.target.resetEmail.value;
+          firebase.auth().sendPasswordResetEmail(email)
+          .then(() => {
+              alert("پاس ورڈ ری سیٹ کرنے کا لنک آپ کے ای میل پر بھیج دیا گیا ہے۔ اپنا ان باکس چیک کریں!");
+              setAuthMode('login'); // واپس لاگ ان سکرین پر لے جائیں
+          })
+          .catch(err => alert("ای میل بھیجنے میں مسئلہ: " + err.message));
+      };
+
       const handleLogout = () => { if(confirm('کیا آپ لاگ آؤٹ کرنا چاہتے ہیں؟')) firebase.auth().signOut(); };
 
       const getCustBal = (cId) => customerLedger.filter(l => l.customerId === cId).reduce((a,x) => x.type === 'bill' ? a + x.amount : a - x.amount, 0);
-
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
       const totalPayable = ledger.reduce((acc, c) => c.type === 'bill' ? acc + c.amount : acc - c.amount, 0); 
       const totalCapital = capitalLedger.reduce((acc, c) => c.type === 'in' ? acc + c.amount : acc - c.amount, 0);
@@ -198,7 +204,7 @@
 
       if (loading) return <div style={{textAlign:'center', padding:'50px'}}>لوڈ ہو رہا ہے...</div>;
 
-      // --- لاگ ان / سائن اپ سکرین ---
+      // --- Authentication Screen ---
       if (!user) {
         return (
           <div style={{background: '#2c3e50', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'}}>
@@ -206,29 +212,55 @@
               <h1 style={{color: '#2c3e50', margin: '0 0 10px 0'}}>ڈیجیٹل کھاتہ</h1>
               <p style={{color: '#7f8c8d', marginBottom: '20px'}}>اپنے دکان کا حساب کتاب محفوظ رکھیں</p>
               
-              <h2 style={{color: '#3498db'}}>{authMode === 'login' ? 'لاگ ان کریں' : 'نیا اکاؤنٹ بنائیں'}</h2>
-              <form onSubmit={handleAuth}>
-                <input type="email" name="email" placeholder="ای میل ایڈریس" required style={{border: '2px solid #ecf0f1'}} />
-                <input type="password" name="password" placeholder="پاس ورڈ (کم از کم 6 ہندسے)" required style={{border: '2px solid #ecf0f1'}} />
-                <button className="btn btn-blue" style={{width: '100%', padding: '12px', fontSize: '16px', marginTop: '10px'}}>
-                  {authMode === 'login' ? 'لاگ ان (Login)' : 'اکاؤنٹ بنائیں (Sign Up)'}
-                </button>
-              </form>
-              
-              <p style={{marginTop: '20px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
-                {authMode === 'login' ? 'نیا اکاؤنٹ نہیں ہے؟ یہاں کلک کریں' : 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں'}
-              </p>
+              {/* اگر یوزر 'پاس ورڈ بھول گئے' پر کلک کرے */}
+              {authMode === 'reset' ? (
+                <div>
+                    <h2 style={{color: '#3498db'}}>پاس ورڈ ری سیٹ کریں</h2>
+                    <p style={{color: '#7f8c8d', fontSize: '14px', marginBottom: '15px'}}>اپنا رجسٹرڈ ای میل درج کریں، ہم آپ کو نیا پاس ورڈ بنانے کا لنک بھیجیں گے۔</p>
+                    <form onSubmit={handlePasswordReset}>
+                        <input type="email" name="resetEmail" placeholder="ای میل ایڈریس" required style={{border: '2px solid #ecf0f1'}} />
+                        <button className="btn btn-blue" style={{width: '100%', padding: '12px', fontSize: '16px', marginTop: '10px'}}>
+                            لنک بھیجیں
+                        </button>
+                    </form>
+                    <p style={{marginTop: '20px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode('login')}>
+                        ← واپس لاگ ان پر جائیں
+                    </p>
+                </div>
+              ) : (
+                // اگر یوزر لاگ ان یا سائن اپ سکرین پر ہو
+                <div>
+                    <h2 style={{color: '#3498db'}}>{authMode === 'login' ? 'لاگ ان کریں' : 'نیا اکاؤنٹ بنائیں'}</h2>
+                    <form onSubmit={handleAuth}>
+                        <input type="email" name="email" placeholder="ای میل ایڈریس" required style={{border: '2px solid #ecf0f1'}} />
+                        <input type="password" name="password" placeholder="پاس ورڈ (کم از کم 6 ہندسے)" required style={{border: '2px solid #ecf0f1'}} />
+                        <button className="btn btn-blue" style={{width: '100%', padding: '12px', fontSize: '16px', marginTop: '10px'}}>
+                        {authMode === 'login' ? 'لاگ ان (Login)' : 'اکاؤنٹ بنائیں (Sign Up)'}
+                        </button>
+                    </form>
+                    
+                    {/* پاس ورڈ بھولنے کا لنک صرف لاگ ان سکرین پر نظر آئے گا */}
+                    {authMode === 'login' && (
+                        <p style={{marginTop: '15px', cursor: 'pointer', color: '#3498db', fontWeight: 'bold', fontSize: '14px'}} onClick={() => setAuthMode('reset')}>
+                            پاس ورڈ بھول گئے؟ (Forgot Password)
+                        </p>
+                    )}
+
+                    <p style={{marginTop: '15px', cursor: 'pointer', color: '#e74c3c', fontWeight: 'bold'}} onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')}>
+                        {authMode === 'login' ? 'نیا اکاؤنٹ نہیں ہے؟ یہاں کلک کریں' : 'پہلے سے اکاؤنٹ ہے؟ لاگ ان کریں'}
+                    </p>
+                </div>
+              )}
             </div>
           </div>
         );
       }
 
-      // --- مین ایپ ---
+      // --- Main App ---
       return (
         <div>
           <div className={modal ? "no-print" : ""}>
               
-              {/* پرنٹ والا ہیڈر (اب ڈائنامک ہے) */}
               <div className="print-only">
                  <h1 style={{margin:0, color:'#2c3e50'}}>{storeProfile.storeName}</h1>
                  <p style={{margin:'5px 0', fontSize:'14px'}}>{storeProfile.address}</p>
@@ -236,7 +268,6 @@
                  <hr style={{borderTop:'2px solid #2c3e50'}}/>
               </div>
 
-              {/* مین ہیڈر */}
               <div className="header no-print">
                   <h2 style={{margin:0}}>{storeProfile.storeName}</h2>
                   <button onClick={handleLogout} style={{background: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer'}}>لاگ آؤٹ</button>
@@ -255,23 +286,14 @@
                   </div>
                   <div className="container">
 
-                    {/* پروفائل سیٹنگز ٹیب */}
                     {activeTab === 'settings' && (
                       <div className="no-print">
                         <div className="card">
                            <h3 style={{textAlign:'center', marginTop:0, color:'#2c3e50'}}>دکان کی پروفائل (پرنٹ کے لیے)</h3>
-                           <form onSubmit={(e)=>{
-                               e.preventDefault();
-                               const f = new FormData(e.target);
-                               sync({ storeName: f.get('sName'), phone: f.get('phone'), address: f.get('address') }, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger);
-                               alert("پروفائل اپ ڈیٹ ہو گئی!");
-                           }}>
-                               <label>دکان کا نام:</label>
-                               <input name="sName" defaultValue={storeProfile.storeName} required />
-                               <label>فون نمبر:</label>
-                               <input name="phone" defaultValue={storeProfile.phone} />
-                               <label>مکمل ایڈریس:</label>
-                               <input name="address" defaultValue={storeProfile.address} />
+                           <form onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync({ storeName: f.get('sName'), phone: f.get('phone'), address: f.get('address') }, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); alert("پروفائل اپ ڈیٹ ہو گئی!"); }}>
+                               <label>دکان کا نام:</label><input name="sName" defaultValue={storeProfile.storeName} required />
+                               <label>فون نمبر:</label><input name="phone" defaultValue={storeProfile.phone} />
+                               <label>مکمل ایڈریس:</label><input name="address" defaultValue={storeProfile.address} />
                                <button className="btn btn-blue" style={{width:'100%', padding:'12px', fontSize:'16px', marginTop:'10px'}}>محفوظ کریں</button>
                            </form>
                         </div>
@@ -342,7 +364,7 @@
                           <div className="summary-box" style={{background:'#fcf3cf'}}><div><small>کل آمد</small><br/><strong style={{color:'green'}}>{monthCashIn.toLocaleString()}</strong></div><div><small>کل خرچ</small><br/><strong style={{color:'red'}}>{monthCashOut.toLocaleString()}</strong></div><div className="balance-highlight balance-highlight-orange">اس مہینے کی بچت: {(monthCashIn - monthCashOut).toLocaleString()} Rs</div></div>
                           <button className="btn btn-blue no-print" style={{width:'100%', padding:'10px', marginBottom:'10px'}} onClick={handlePrint}>🖨 اس مہینے کا روزنامچہ پرنٹ کریں</button>
                           <table style={{fontSize:'13px'}}><thead><tr><th>تاریخ</th><th>تفصیل</th><th>آمد</th><th>خرچ</th><th className="no-print">ایکشن</th></tr></thead><tbody>
-                              {filteredCash.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}</td><td style={{color:'green', fontWeight:'bold'}}>{l.type==='in'?l.amount:'-'}</td><td style={{color:'red', fontWeight:'bold'}}>{l.type==='out'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editCashEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteCashEntry(l.id)}>🗑</button></td></tr>))}
+                              {filteredCash.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}{l.fileUrl && <div style={{marginTop:'5px'}}><a href={l.fileUrl} target="_blank" rel="noreferrer" style={{color:'#3498db', textDecoration:'none', fontWeight:'bold'}}>📄 رسید</a></div>}</td><td style={{color:'green', fontWeight:'bold'}}>{l.type==='in'?l.amount:'-'}</td><td style={{color:'red', fontWeight:'bold'}}>{l.type==='out'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editCashEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteCashEntry(l.id)}>🗑</button></td></tr>))}
                           </tbody></table>
                         </div>
                       </div>
@@ -352,14 +374,14 @@
                       <div className="no-print">
                         <div className="total-banner no-print" style={{backgroundColor: '#34495e'}}>رکے کھاتوں میں پھنسی رقم: {totalStuckReceivable.toLocaleString()} Rs</div>
                         <div><input type="text" className="search-input" style={{borderColor: '#34495e'}} placeholder="🔍 رکا ہوا کھاتہ تلاش کریں..." value={stuckSearch} onChange={(e) => setStuckSearch(e.target.value)} /></div>
-                        {filteredStuckCustomers.map(c => { const bal = getCustBal(c.id); return (<div className="card" key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: '5px solid #34495e', background:'#f9f9f9'}}><div onClick={()=>setViewingCust(c)} style={{cursor:'pointer', flex:1}}><strong>{c.name}</strong><div style={{color: '#c0392b', fontWeight:'bold'}}>پھنسی ہوئی رقم: {bal.toLocaleString()} Rs</div></div></div>); })}
+                        {filteredStuckCustomers.map(c => { const bal = getCustBal(c.id); return (<div className="card" key={c.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderRight: '5px solid #34495e', background:'#f9f9f9'}}><div onClick={()=>setViewingCust(c)} style={{cursor:'pointer', flex:1}}><strong>{c.name}</strong><div style={{color: '#c0392b', fontWeight:'bold'}}>رقم: {bal.toLocaleString()} Rs</div></div></div>); })}
                       </div>
                     )}
 
                     {activeTab === 'capital' && (
                       <div className="no-print">
-                        <div className="total-banner no-print" style={{backgroundColor: '#9b59b6'}}>دکان میں موجود کل سرمایہ: {totalCapital.toLocaleString()} Rs</div>
-                        <div style={{display:'flex', gap:'5px', marginBottom:'5px'}}><button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ سرمایہ آیا / ڈالا</button><button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- نکالا (پراپرٹی/خرچ)</button></div>
+                        <div className="total-banner no-print" style={{backgroundColor: '#9b59b6'}}>دکان میں کل سرمایہ: {totalCapital.toLocaleString()} Rs</div>
+                        <div style={{display:'flex', gap:'5px', marginBottom:'5px'}}><button className="btn btn-green" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ سرمایہ آیا / ڈالا</button><button className="btn btn-red" style={{flex:1, padding:'12px', fontSize:'14px'}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- نکالا (خرچ)</button></div>
                         <button className="btn btn-blue" style={{width:'100%', padding:'12px', marginBottom:'10px', fontSize:'14px'}} onClick={()=>setModal({type:'transferCap'})}>⇆ ایک اکاؤنٹ سے دوسرے میں منتقلی</button>
                         <button className="btn btn-purple" style={{width:'100%', padding:'12px', marginBottom:'10px'}} onClick={()=>setModal({type:'addCapAccount'})}>+ نیا سرمایہ کا اکاؤنٹ بنائیں</button>
                         <div><input type="text" className="search-input" placeholder="🔍 اکاؤنٹ تلاش کریں..." value={capSearch} onChange={(e) => setCapSearch(e.target.value)} /></div>
@@ -369,36 +391,22 @@
                   </div>
                 </>
               ) : viewingSup ? (
-                /* --- Supplier Detail --- */
                 <div className="container">
                   <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}><button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس لسٹ</button><button className="btn btn-blue" onClick={handlePrint}>🖨 بل پرنٹ کریں</button></div>
-                  <div className="card" style={{marginTop:'10px'}}>
-                    <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingSup.name} کا کھاتہ (سپلائر)<button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editSupName', data: viewingSup})}>✎ نام بدلیں</button></h3>
-                    <div className="summary-box"><div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div><small>ٹوٹل ادا</small><br/><strong style={{color:'green'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div className="balance-highlight">بقایا (دینا ہے): {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div></div>
-                    <div className="no-print" style={{display:'flex', gap:'5px'}}><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل انٹری</button><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ ادائیگی</button></div>
-                  </div>
+                  <div className="card" style={{marginTop:'10px'}}><h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingSup.name} کا کھاتہ (سپلائر)<button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editSupName', data: viewingSup})}>✎ نام بدلیں</button></h3><div className="summary-box"><div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div><small>ٹوٹل ادا</small><br/><strong style={{color:'green'}}>{ledger.filter(l=>l.supplierId===viewingSup.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div className="balance-highlight">بقایا (دینا ہے): {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div></div><div className="no-print" style={{display:'flex', gap:'5px'}}><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>+ بل انٹری</button><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>+ ادائیگی</button></div></div>
                   <div className="card"><table style={{fontSize:'13px'}}><thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>ادا</th><th className="no-print">ایکشن</th></tr></thead><tbody>{ledger.filter(l => l.supplierId === viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}</td><td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td><td style={{color:'green'}}>{l.type==='payment'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editSupEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteSupEntry(l.id)}>🗑</button></td></tr>))}</tbody></table></div>
                 </div>
               ) : viewingCust ? (
-                /* --- Customer Detail --- */
                 <div className="container">
                   <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}><button className="btn btn-gray" onClick={()=>setViewingCust(null)}>← واپس لسٹ</button><button className="btn btn-blue" onClick={handlePrint}>🖨 بل پرنٹ کریں</button></div>
-                  <div className="card" style={{marginTop:'10px', border: viewingCust.isStuck ? '2px solid #e74c3c' : 'none', background: viewingCust.isStuck ? '#fff5f5' : '#fff'}}>
-                    <h3 style={{margin:'0 0 10px 0', textAlign:'center', color: viewingCust.isStuck ? '#c0392b' : '#333'}}>{viewingCust.name} {viewingCust.isStuck ? '(رکا کھاتہ)' : ''}<button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCustName', data: viewingCust})}>✎ نام</button><button className={`btn ${viewingCust.isStuck ? 'btn-green' : 'btn-dark'} no-print`} style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>toggleStuckStatus(viewingCust)}>{viewingCust.isStuck ? '✅ واپس ایکٹو کریں' : '⚠️ رکے کھاتوں میں ڈالیں'}</button></h3>
-                    <div className="summary-box"><div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{customerLedger.filter(l=>l.customerId===viewingCust.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div><small>ٹوٹل وصولی</small><br/><strong style={{color:'green'}}>{customerLedger.filter(l=>l.customerId===viewingCust.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div className="balance-highlight balance-highlight-green" style={{borderColor: viewingCust.isStuck ? '#c0392b' : '#2ecc71', color: viewingCust.isStuck ? '#c0392b' : '#2ecc71'}}>بقایا: {getCustBal(viewingCust.id).toLocaleString()} Rs</div></div>
-                    <div className="no-print" style={{display:'flex', gap:'5px'}}><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'bill'})}>+ کسٹمر بل</button><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'payment'})}>+ وصولی (آگئے)</button></div>
-                  </div>
-                  <div className="card"><table style={{fontSize:'13px'}}><thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>وصولی</th><th className="no-print">ایکشن</th></tr></thead><tbody>{customerLedger.filter(l => l.customerId === viewingCust.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}</td><td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td><td style={{color:'green'}}>{l.type==='payment'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editCustEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteCustEntry(l.id)}>🗑</button></td></tr>))}</tbody></table></div>
+                  <div className="card" style={{marginTop:'10px', border: viewingCust.isStuck ? '2px solid #e74c3c' : 'none', background: viewingCust.isStuck ? '#fff5f5' : '#fff'}}><h3 style={{margin:'0 0 10px 0', textAlign:'center', color: viewingCust.isStuck ? '#c0392b' : '#333'}}>{viewingCust.name} {viewingCust.isStuck ? '(رکا کھاتہ)' : ''}<button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCustName', data: viewingCust})}>✎ نام</button><button className={`btn ${viewingCust.isStuck ? 'btn-green' : 'btn-dark'} no-print`} style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>toggleStuckStatus(viewingCust)}>{viewingCust.isStuck ? '✅ واپس ایکٹو کریں' : '⚠️ رکے کھاتوں میں ڈالیں'}</button></h3><div className="summary-box"><div><small>ٹوٹل بل</small><br/><strong style={{color:'red'}}>{customerLedger.filter(l=>l.customerId===viewingCust.id && l.type==='bill').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div><small>ٹوٹل وصولی</small><br/><strong style={{color:'green'}}>{customerLedger.filter(l=>l.customerId===viewingCust.id && l.type==='payment').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div className="balance-highlight balance-highlight-green" style={{borderColor: viewingCust.isStuck ? '#c0392b' : '#2ecc71', color: viewingCust.isStuck ? '#c0392b' : '#2ecc71'}}>بقایا: {getCustBal(viewingCust.id).toLocaleString()} Rs</div></div><div className="no-print" style={{display:'flex', gap:'5px'}}><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'bill'})}>+ کسٹمر بل</button><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'payment'})}>+ وصولی</button></div></div>
+                  <div className="card"><table style={{fontSize:'13px'}}><thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>وصولی</th><th className="no-print">ایکشن</th></tr></thead><tbody>{customerLedger.filter(l => l.customerId === viewingCust.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}{l.fileUrl && <div style={{marginTop:'5px'}}><a href={l.fileUrl} target="_blank" rel="noreferrer" style={{color:'#3498db', textDecoration:'none', fontWeight:'bold'}}>📄 ریکارڈ دیکھیں</a></div>}</td><td style={{color:'red'}}>{l.type==='bill'?l.amount:'-'}</td><td style={{color:'green'}}>{l.type==='payment'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editCustEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteCustEntry(l.id)}>🗑</button></td></tr>))}</tbody></table></div>
                 </div>
               ) : (
-                /* --- Capital Detail --- */
                 <div className="container">
                   <div className="no-print" style={{display:'flex', justifyContent:'space-between', marginBottom:'10px'}}><button className="btn btn-gray" onClick={()=>setViewingCap(null)}>← واپس لسٹ</button><button className="btn btn-blue" onClick={handlePrint}>🖨 ریکارڈ پرنٹ کریں</button></div>
-                  <div className="card" style={{marginTop:'10px'}}>
-                    <h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingCap.name} کا ریکارڈ (سرمایہ)<button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCapName', data: viewingCap})}>✎ نام بدلیں</button></h3>
-                    <div className="summary-box"><div><small>اس میں آیا</small><br/><strong style={{color:'green'}}>{capitalLedger.filter(l=>l.accountId===viewingCap.id && l.type==='in').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div><small>اس سے نکالا</small><br/><strong style={{color:'red'}}>{capitalLedger.filter(l=>l.accountId===viewingCap.id && l.type==='out').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div className="balance-highlight balance-highlight-purple">موجودہ بیلنس: {capitalLedger.filter(l=>l.accountId===viewingCap.id).reduce((a,c)=>c.type==='in'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div></div>
-                  </div>
-                  <div className="card"><table style={{fontSize:'13px'}}><thead><tr><th>تاریخ</th><th>تفصیل</th><th>آیا</th><th>نکالا</th><th className="no-print">ایکشن</th></tr></thead><tbody>{capitalLedger.filter(l => l.accountId === viewingCap.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}</td><td style={{color:'green'}}>{l.type==='in'?l.amount:'-'}</td><td style={{color:'red'}}>{l.type==='out'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editCapEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteCapEntry(l.id)}>🗑</button></td></tr>))}</tbody></table></div>
+                  <div className="card" style={{marginTop:'10px'}}><h3 style={{margin:'0 0 10px 0', textAlign:'center'}}>{viewingCap.name} کا ریکارڈ<button className="btn btn-orange no-print" style={{padding:'2px 6px', fontSize:'12px', marginRight:'10px', verticalAlign:'middle'}} onClick={()=>setModal({type:'editCapName', data: viewingCap})}>✎ نام بدلیں</button></h3><div className="summary-box"><div><small>اس میں آیا</small><br/><strong style={{color:'green'}}>{capitalLedger.filter(l=>l.accountId===viewingCap.id && l.type==='in').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div><small>اس سے نکالا</small><br/><strong style={{color:'red'}}>{capitalLedger.filter(l=>l.accountId===viewingCap.id && l.type==='out').reduce((a,c)=>a+c.amount,0).toLocaleString()}</strong></div><div className="balance-highlight balance-highlight-purple">موجودہ بیلنس: {capitalLedger.filter(l=>l.accountId===viewingCap.id).reduce((a,c)=>c.type==='in'?a+c.amount:a-c.amount,0).toLocaleString()} Rs</div></div></div>
+                  <div className="card"><table style={{fontSize:'13px'}}><thead><tr><th>تاریخ</th><th>تفصیل</th><th>آیا</th><th>نکالا</th><th className="no-print">ایکشن</th></tr></thead><tbody>{capitalLedger.filter(l => l.accountId === viewingCap.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td style={{fontSize:'12px'}}>{l.note}{l.fileUrl && <div style={{marginTop:'5px'}}><a href={l.fileUrl} target="_blank" rel="noreferrer" style={{color:'#3498db', textDecoration:'none', fontWeight:'bold'}}>📄 ریکارڈ دیکھیں</a></div>}</td><td style={{color:'green'}}>{l.type==='in'?l.amount:'-'}</td><td style={{color:'red'}}>{l.type==='out'?l.amount:'-'}</td><td className="no-print"><button className="btn btn-orange" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>setModal({type:'editCapEntry', data: l})}>✎</button><button className="btn btn-red" style={{padding:'2px 4px', margin:'1px'}} onClick={()=>deleteCapEntry(l.id)}>🗑</button></td></tr>))}</tbody></table></div>
                 </div>
               )}
           </div>
@@ -408,74 +416,80 @@
             <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'450px', maxHeight:'90vh', overflowY:'auto'}}>
                 
-                {/* --- Cash Modals --- */}
                 {modal.type === 'addCashEntry' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, [{ id:Date.now(), date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...cashLedger]); setModal(null); }}>
-                    <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'کیش آئی (آمد)':'کیش گئی (خرچ)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: بل، مزدوری..." required /><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, [{ id:Date.now(), date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:f.get('fileUrl')||null }, ...cashLedger]); setModal(null); }}>
+                    <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'کیش آئی (آمد)':'کیش گئی (خرچ)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: بل، مزدوری..." required /><div style={{background:'#eef2f3', padding:'10px', borderRadius:'5px', marginTop:'10px'}}><label style={{fontWeight:'bold', display:'block', marginBottom:'5px'}}>رسید کا لنک (اختیاری):</label><input type="url" name="fileUrl" placeholder="https://..." style={{border:'1px solid #bdc3c7', padding:'8px', width:'100%'}} /></div><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
                 {modal.type === 'editCashEntry' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedCash = cashLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, updatedCash); setModal(null); }}>
-                    <h3>کیش انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedCash = cashLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, updatedCash); setModal(null); }}>
+                    <h3>کیش انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} required /><label>لنک:</label><input type="url" name="fileUrl" defaultValue={modal.data.fileUrl || ''} placeholder="https://..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
-                {/* --- Names Modals --- */}
                 {modal.type === 'editSupName' && (
                   <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name'); const updatedSups = suppliers.map(s => s.id === modal.data.id ? {...s, name: newName} : s); const updatedStock = stock.map(st => st.supplier === modal.data.name ? {...st, supplier: newName} : st); setViewingSup({...viewingSup, name: newName}); sync(storeProfile, updatedSups, updatedStock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
                     <h3>سپلائر کا نام بدلیں</h3><label>نیا نام:</label><input name="name" defaultValue={modal.data.name} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
+
                 {modal.type === 'editCustName' && (
                   <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name'); const updatedCusts = customers.map(c => c.id === modal.data.id ? {...c, name: newName} : c); setViewingCust({...viewingCust, name: newName}); sync(storeProfile, suppliers, stock, ledger, stockHistory, updatedCusts, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
                     <h3>کسٹمر کا نام بدلیں</h3><label>نیا نام:</label><input name="name" defaultValue={modal.data.name} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
+
                 {modal.type === 'editCapName' && (
                   <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const newName = f.get('name'); const updatedCaps = capitalAccounts.map(c => c.id === modal.data.id ? {...c, name: newName} : c); setViewingCap({...viewingCap, name: newName}); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, updatedCaps, capitalLedger, cashLedger); setModal(null); }}>
                     <h3>سرمایہ اکاؤنٹ کا نام بدلیں</h3><label>نیا نام:</label><input name="name" defaultValue={modal.data.name} required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
-                {/* --- Capital Modals --- */}
-                {modal.type === 'transferCap' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const fromAcc = parseInt(f.get('fromAcc')); const toAcc = parseInt(f.get('toAcc')); const amount = parseInt(f.get('amount')); const dateStr = f.get('d'); const note = f.get('n') || 'اکاؤنٹ ٹرانسفر'; if(isNaN(fromAcc) || isNaN(toAcc)) { alert('دونوں اکاؤنٹ منتخب کریں'); return; } if(fromAcc === toAcc) { alert('دونوں اکاؤنٹ مختلف ہونے چاہئیں'); return; } const entryOut = { id: Date.now(), accountId: fromAcc, date: dateStr, type: 'out', amount: amount, note: `منتقلی (نکالے): ${note}` }; const entryIn = { id: Date.now() + 1, accountId: toAcc, date: dateStr, type: 'in', amount: amount, note: `منتقلی (آئے): ${note}` }; sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [entryIn, entryOut, ...capitalLedger], cashLedger); setModal(null); }}>
-                    <h3 style={{color: '#3498db', marginTop: 0}}>⇆ اکاؤنٹ ٹرانسفر</h3>{capitalAccounts.length < 2 ? (<p style={{color:'red'}}>کم از کم 2 اکاؤنٹ ہونے ضروری ہیں۔</p>) : (<><label>کہاں سے نکالنے ہیں؟ (From):</label><select name="fromAcc" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>کس میں ڈالنے ہیں؟ (To):</label><select name="toAcc" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="amount" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: دکان سے بینک بھیجے..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>ٹرانسفر کریں</button></>)}<button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
-                  </form>
-                )}
-                {modal.type === 'addCapEntryMain' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const accountId = parseInt(f.get('accountId')); if(isNaN(accountId)) { alert('اکاؤنٹ منتخب کریں'); return; } sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [{ id:Date.now(), accountId: accountId, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...capitalLedger], cashLedger); setModal(null); }}>
-                    <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'سرمایہ ڈالا (آیا)':'سرمایہ نکالا (خرچ کیا)'}</h3>{capitalAccounts.length === 0 ? (<p style={{color:'red'}}>پہلے اکاؤنٹ بنائیں۔</p>) : (<><label>اکاؤنٹ منتخب کریں:</label><select name="accountId" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button></>)}<button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                {modal.type === 'editSupEntry' && (
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = ledger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, updatedLedger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
+                    <h3>سپلائر انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><label>لنک:</label><input type="url" name="fileUrl" defaultValue={modal.data.fileUrl || ''} placeholder="https://..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
 
-                {/* --- Stock Modals --- */}
-                {modal.type === 'stockAction' && (
-                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const amt=parseInt(f.get('qty')); const dateStr=f.get('date'); if(modal.actionType==='in') { const rate=parseInt(f.get('rate')); const bill=amt*rate; let currentSups=[...suppliers]; let targetSup=currentSups.find(x=>x.name===modal.item.supplier); if(!targetSup) { targetSup={id:Date.now()+1, name:modal.item.supplier}; currentSups.push(targetSup); } const ledgerEntryId=Date.now()+2; const ledgerEntry={id:ledgerEntryId, supplierId:targetSup.id, date:dateStr, type:'bill', amount:bill, note:`وصولی: ${modal.item.name} (${amt} درجن)`}; const historyEntry={id:Date.now()+3, itemId:modal.item.id, date:dateStr, type:'in', qty:amt, rate:rate, ledgerId:ledgerEntryId}; sync(storeProfile, currentSups, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty+amt,rate:rate}:s), [ledgerEntry,...ledger], [historyEntry,...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); } else { if(modal.item.qty<amt) { alert("اسٹاک میں اتنا مال نہیں ہے!"); return; } const historyEntry={id:Date.now()+3, itemId:modal.item.id, date:dateStr, type:'out', qty:amt}; sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty-amt,sold:(s.sold||0)+amt}:s), ledger, [historyEntry,...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); } setModal(null); }}>
-                    <h3 style={{marginTop:0, color: modal.actionType==='in'?'#2ecc71':'#e74c3c'}}>{modal.actionType === 'in' ? 'مال وصول کریں (+)' : 'مال فروخت کریں (-)'}</h3><p style={{margin:'0 0 10px 0', fontSize:'14px', color:'#555'}}>{modal.item.name} ({modal.item.supplier})</p><label>تاریخ:</label><input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required /><label>مقدار (درجن):</label><input type="number" name="qty" required />{modal.actionType === 'in' && (<><label>ریٹ (فی درجن):</label><input type="number" name="rate" defaultValue={modal.item.rate || ''} required /></>)}<button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>انٹری سیو کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                {modal.type === 'transferCap' && (
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const fromAcc = parseInt(f.get('fromAcc')); const toAcc = parseInt(f.get('toAcc')); const amount = parseInt(f.get('amount')); const dateStr = f.get('d'); const note = f.get('n') || 'اکاؤنٹ ٹرانسفر'; if(isNaN(fromAcc) || isNaN(toAcc)) { alert('دونوں اکاؤنٹ منتخب کریں'); return; } if(fromAcc === toAcc) { alert('دونوں اکاؤنٹ مختلف ہونے چاہئیں'); return; } const entryOut = { id: Date.now(), accountId: fromAcc, date: dateStr, type: 'out', amount: amount, note: `منتقلی (نکالے): ${note}` }; const entryIn = { id: Date.now() + 1, accountId: toAcc, date: dateStr, type: 'in', amount: amount, note: `منتقلی (آئے): ${note}` }; sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [entryIn, entryOut, ...capitalLedger], cashLedger); setModal(null); }}>
+                    <h3 style={{color: '#3498db', marginTop: 0}}>⇆ اکاؤنٹ ٹرانسفر</h3>
+                    {capitalAccounts.length < 2 ? (<p style={{color:'red'}}>کم از کم 2 اکاؤنٹ ہونے ضروری ہیں۔</p>) : (<><label>کہاں سے نکالنے ہیں؟ (From):</label><select name="fromAcc" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>کس میں ڈالنے ہیں؟ (To):</label><select name="toAcc" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="amount" required /><label>تفصیل:</label><input name="n" placeholder="مثلاً: دکان سے بینک..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>ٹرانسفر کریں</button></>)}<button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
                   </form>
                 )}
+
+                {modal.type === 'addCapEntryMain' && (
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const accountId = parseInt(f.get('accountId')); if(isNaN(accountId)) { alert('اکاؤنٹ منتخب کریں'); return; } sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [{ id:Date.now(), accountId: accountId, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...capitalLedger], cashLedger); setModal(null); }}>
+                    <h3 style={{color: modal.entryType==='in'?'#2ecc71':'#e74c3c', marginTop: 0}}>{modal.entryType==='in'?'سرمایہ ڈالا (آیا)':'سرمایہ نکالا (خرچ)'}</h3>
+                    {capitalAccounts.length === 0 ? (<p style={{color:'red'}}>پہلے اکاؤنٹ بنائیں۔</p>) : (<><label>اکاؤنٹ منتخب کریں:</label><select name="accountId" required><option value="">منتخب کریں...</option>{capitalAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} required /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className={modal.entryType==='in'?'btn btn-green':'btn btn-red'} style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button></>)}<button className="btn btn-gray" style={{width:'100%', marginTop: '5px'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  </form>
+                )}
+
+                {modal.type === 'stockAction' && (
+                  <form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const amt=parseInt(f.get('qty')); const dateStr=f.get('date'); if(modal.actionType==='in') { const rate=parseInt(f.get('rate')); const bill=amt*rate; let currentSups=[...suppliers]; let targetSup=currentSups.find(x=>x.name===modal.item.supplier); if(!targetSup) { targetSup={id:Date.now()+1, name:modal.item.supplier}; currentSups.push(targetSup); } const ledgerEntryId=Date.now()+2; const ledgerEntry={id:ledgerEntryId, supplierId:targetSup.id, date:dateStr, type:'bill', amount:bill, note:`وصولی: ${modal.item.name} (${amt} درجن)`}; const historyEntry={id:Date.now()+3, itemId:modal.item.id, date:dateStr, type:'in', qty:amt, rate:rate, ledgerId:ledgerEntryId}; sync(storeProfile, currentSups, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty+amt,rate:rate}:s), [ledgerEntry,...ledger], [historyEntry,...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); } else { if(modal.item.qty<amt) { alert("اسٹاک میں اتنا مال نہیں ہے!"); return; } const historyEntry={id:Date.now()+3, itemId:modal.item.id, date:dateStr, type:'out', qty:amt}; sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty-amt,sold:(s.sold||0)+amt}:s), ledger, [historyEntry,...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); } setModal(null); }}>
+                    <h3 style={{marginTop:0, color: modal.actionType==='in'?'#2ecc71':'#e74c3c'}}>{modal.actionType === 'in' ? 'مال وصول کریں (+)' : 'مال فروخت کریں (-)'}</h3>
+                    <p style={{margin:'0 0 10px 0', fontSize:'14px', color:'#555'}}>{modal.item.name} ({modal.item.supplier})</p><label>تاریخ:</label><input type="date" name="date" defaultValue={new Date().toISOString().split('T')[0]} required /><label>مقدار (درجن):</label><input type="number" name="qty" required />{modal.actionType === 'in' && (<><label>ریٹ (فی درجن):</label><input type="number" name="rate" defaultValue={modal.item.rate || ''} required /></>)}<button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>انٹری سیو کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button>
+                  </form>
+                )}
+
                 {modal.type === 'viewStockHistory' && (() => {
                   const totalRec = modal.item.qty + (modal.item.sold || 0); const rem = (modal.item.totalOrdered || 0) - totalRec; const historyRecIn = stockHistory.filter(h => h.itemId === modal.item.id && h.type === 'in').reduce((a,c)=>a+c.qty, 0); const oldStockDiff = totalRec - historyRecIn;
                   return (<div><div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}><h3 style={{marginTop:0}}>{modal.item.name} کا ریکارڈ</h3><button className="btn btn-blue no-print" onClick={handlePrint}>🖨 پرنٹ</button></div><p style={{margin:'0 0 10px 0', fontSize:'14px', color:'#555'}}>سپلائر: {modal.item.supplier}</p><div className="summary-box"><div><small>کل آرڈر</small><br/><strong>{modal.item.totalOrdered || 0}</strong></div><div><small>وصول شدہ</small><br/><strong style={{color:'green'}}>{totalRec}</strong></div><div className="balance-highlight">بقایا مال: {rem > 0 ? rem : 0} درجن</div></div><table style={{fontSize:'13px', width:'100%', textAlign:'center'}}><thead><tr><th>تاریخ</th><th>عمل</th><th>مقدار</th><th className="no-print">ایکشن</th></tr></thead><tbody>{stockHistory.filter(h => h.itemId === modal.item.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(h => (<tr key={h.id}><td>{h.date}</td><td style={{color: h.type==='in'?'#2ecc71':'#e74c3c'}}>{h.type==='in' ? `آمد` : 'فروخت'}</td><td>{h.qty}</td><td className="no-print"><button className="btn btn-red" style={{padding:'2px 4px'}} onClick={()=>deleteHistoryEntry(h, modal.item)}>🗑</button></td></tr>))}{oldStockDiff > 0 && (<tr style={{background: '#f9f9f9'}}><td style={{color:'#7f8c8d'}}>-</td><td style={{color: '#2ecc71'}}>پرانا ریکارڈ</td><td><strong>{oldStockDiff}</strong></td><td className="no-print">-</td></tr>)}</tbody></table><button className="btn btn-gray no-print" style={{width:'100%', marginTop:'15px'}} onClick={()=>setModal(null)}>بند کریں</button></div>)
                 })()}
 
-                {/* --- Adding Items/People Modals --- */}
                 {modal.type === 'addSup' && (<div className="no-print"><h3>نیا سپلائر</h3><input id="supNameIn" placeholder="نام..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=>{ const n = document.getElementById('supNameIn').value; if(n) { sync(storeProfile, [...suppliers, {id: Date.now(), name: n}], stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); } }}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button></div>)}
                 {modal.type === 'addCust' && (<div className="no-print"><h3>نیا کسٹمر</h3><input id="custNameIn" placeholder="نام..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=>{ const n = document.getElementById('custNameIn').value; if(n) { sync(storeProfile, suppliers, stock, ledger, stockHistory, [...customers, {id: Date.now(), name: n}], customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); } }}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button></div>)}
-                {modal.type === 'addCapAccount' && (<div className="no-print"><h3>نیا سرمایہ کا ذریعہ / اکاؤنٹ</h3><input id="capNameIn" placeholder="مثلاً: پراپرٹی، میزان بینک، ذاتی سرمایہ..." /><button className="btn btn-purple" style={{width:'100%', marginTop:'10px'}} onClick={()=>{ const n=document.getElementById('capNameIn').value; if(n) { sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, [...capitalAccounts, {id:Date.now(), name:n}], capitalLedger, cashLedger); setModal(null); } }}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button></div>)}
+                {modal.type === 'addCapAccount' && (<div className="no-print"><h3>نیا سرمایہ کا ذریعہ / اکاؤنٹ</h3><input id="capNameIn" placeholder="مثلاً: پراپرٹی، میزان بینک..." /><button className="btn btn-purple" style={{width:'100%', marginTop:'10px'}} onClick={()=>{ const n=document.getElementById('capNameIn').value; if(n) { sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, [...capitalAccounts, {id:Date.now(), name:n}], capitalLedger, cashLedger); setModal(null); } }}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} onClick={()=>setModal(null)}>کینسل</button></div>)}
                 
                 {modal.type === 'addStock' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const sName=f.get('s'); const nId=Date.now(); let nSups=[...suppliers]; if(!suppliers.find(x=>x.name===sName)) nSups.push({id: nId+1, name: sName}); sync(storeProfile, nSups, [...stock, {id: nId, name: f.get('n'), supplier: sName, qty: 0, sold: 0, rate: parseInt(f.get('r')), totalOrdered: parseInt(f.get('o'))}], ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>نیا آئٹم</h3><label>نام:</label> <input name="n" required /><label>سپلائر:</label> <input name="s" list="supList" required /><datalist id="supList">{suppliers.map(s=><option key={s.id} value={s.name}/>)}</datalist><label>ٹوٹل آرڈر:</label> <input name="o" type="number" required /><label>ریٹ:</label> <input name="r" type="number" required /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>سیو</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
                 {modal.type === 'editStock' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock.map(s => s.id === modal.data.id ? {...s, name: f.get('n'), supplier: f.get('s'), totalOrdered: parseInt(f.get('o')), rate: parseInt(f.get('r')), qty: parseInt(f.get('q'))} : s), ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>ایڈٹ اسٹاک</h3><label>نام:</label><input name="n" defaultValue={modal.data.name} /><label>سپلائر:</label><input name="s" defaultValue={modal.data.supplier} /><label>ٹوٹل آرڈر:</label><input name="o" type="number" defaultValue={modal.data.totalOrdered} /><label>موجودہ اسٹاک:</label><input name="q" type="number" defaultValue={modal.data.qty} /><label>ریٹ:</label><input name="r" type="number" defaultValue={modal.data.rate} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>اپ ڈیٹ</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
 
-                {/* --- Entry Modals --- */}
-                {modal.type === 'addEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, [{ id:Date.now(), supplierId:viewingSup.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...ledger], stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'سپلائر بل انٹری':'سپلائر کو ادائیگی'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="یہاں تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
-                {modal.type === 'addCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, [{ id:Date.now(), customerId:viewingCust.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n') }, ...customerLedger], capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'کسٹمر کا بل (لینے ہیں)':'کسٹمر سے وصولی (آگئے)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل / مال کا نام:</label><input name="n" placeholder="یہاں تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'addEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, [{ id:Date.now(), supplierId:viewingSup.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:f.get('fileUrl')||null }, ...ledger], stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'سپلائر بل انٹری':'سپلائر کو ادائیگی'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'addCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, [{ id:Date.now(), customerId:viewingCust.id, date:f.get('d'), type:modal.entryType, amount:parseInt(f.get('a')), note:f.get('n'), fileUrl:f.get('fileUrl')||null }, ...customerLedger], capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>{modal.entryType==='bill'?'کسٹمر کا بل (لینے ہیں)':'کسٹمر سے وصولی (آگئے)'}</h3><label>تاریخ:</label><input type="date" name="d" defaultValue={new Date().toISOString().split('T')[0]} /><label>رقم:</label><input type="number" name="a" required /><label>تفصیل:</label><input name="n" placeholder="تفصیل لکھیں..." /><button className="btn btn-blue" style={{width:'100%', marginTop:'15px', padding:'12px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
                 
-                {modal.type === 'editSupEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = ledger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, updatedLedger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>سپلائر انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
-                {modal.type === 'editCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = customerLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, updatedLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
-                {modal.type === 'editCapEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = capitalLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note')} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, updatedLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'editCustEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = customerLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, updatedLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
+                {modal.type === 'editCapEntry' && (<form className="no-print" onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); const updatedLedger = capitalLedger.map(l => l.id === modal.data.id ? {...l, date: f.get('date'), amount: parseInt(f.get('amount')), note: f.get('note'), fileUrl: f.get('fileUrl') || null} : l); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, updatedLedger, cashLedger); setModal(null); }}><h3>انٹری درست کریں</h3><label>تاریخ:</label><input type="date" name="date" defaultValue={modal.data.date} required /><label>رقم:</label><input type="number" name="amount" defaultValue={modal.data.amount} required /><label>تفصیل:</label><input name="note" defaultValue={modal.data.note} /><button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button><button className="btn btn-gray" style={{width:'100%'}} type="button" onClick={()=>setModal(null)}>کینسل</button></form>)}
 
               </div>
             </div>
