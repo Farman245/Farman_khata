@@ -18,9 +18,26 @@
   <style>
     body { margin: 0; background: #f4f7f6; font-family: system-ui; direction: rtl; }
     .header { background: #2c3e50; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
-    .tab-bar { display: flex; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 10; overflow-x: auto; white-space: nowrap; }
-    .tab-btn { flex: 1; padding: 12px; border: none; background: none; font-weight: bold; cursor: pointer; font-size: 14px; border-left: 1px solid #eee; min-width: 80px; }
-    .tab-btn:last-child { border-left: none; }
+    .tab-bar { 
+  display: flex; 
+  flex-wrap: wrap; /* یہ لائن ٹیبز کو دوسری لائن میں لے جائے گی */
+  background: #fff; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+  position: sticky; 
+  top: 0; 
+  z-index: 10; 
+}
+
+.tab-btn { 
+  flex: 1 0 30%; /* یہ ہر لائن میں 3 یا 4 ٹیب دکھائے گا */
+  padding: 10px 5px; 
+  border: none; 
+  background: none; 
+  font-weight: bold; 
+  cursor: pointer; 
+  font-size: 12px; /* تھوڑا چھوٹا سائز تاکہ جگہ بنے */
+  border-bottom: 1px solid #eee;
+}
     .active-tab { border-bottom: 4px solid #3498db; color: #3498db; }
     .container { padding: 10px; max-width: 650px; margin: auto; }
     .card { background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
