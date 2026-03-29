@@ -1,6 +1,7 @@
 {
   "name": "ڈیجیٹل کھاتہ",
   "short_name": "کھاتہ",
+  "description": "نیو قاری ہوزری سٹور کا ڈیجیٹل روزنامچہ اور محفوظ کھاتہ",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f7f6",
