@@ -19,7 +19,6 @@
     body { margin: 0; background: #f4f7f6; font-family: system-ui; direction: rtl; }
     .header { background: #2c3e50; color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
     
-    /* نیا اور بہتر ٹیب بار */
     .tab-bar { 
       display: flex; 
       background: #fff; 
@@ -47,7 +46,6 @@
       background: #f0f8ff;
     }
 
-    /* "مزید" مینو کا اسٹائل */
     .more-menu {
       position: absolute;
       top: 50px;
@@ -89,24 +87,17 @@
     .total-banner { background: #2ecc71; color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; }
     .summary-box { background: #eef2f3; padding: 15px; border-radius: 10px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center; }
     .balance-highlight { grid-column: span 2; background: #fff; padding: 10px; border-radius: 8px; border: 2px solid #e74c3c; color: #e74c3c; font-size: 18px; font-weight: bold; }
-    .balance-highlight-green { border-color: #2ecc71; color: #2ecc71; }
-    .balance-highlight-purple { border-color: #9b59b6; color: #9b59b6; }
-    .balance-highlight-orange { border-color: #f39c12; color: #f39c12; }
     table { width: 100%; text-align: right; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
     th, td { padding: 10px; border-bottom: 1px solid #eee; }
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:1000; padding:10px; }
     
     @media print {
       .no-print { display: none !important; }
-      .print-only { display: block !important; text-align: center; margin-bottom: 20px; }
       body { background: white !important; }
-      .card { box-shadow: none !important; border: 1px solid #ccc !important; page-break-inside: avoid; }
-      .modal { position: static !important; background: transparent !important; padding: 0 !important; }
-      .modal > .card { border: none !important; width: 100% !important; max-width: 100% !important; }
+      .card { box-shadow: none !important; border: 1px solid #ccc !important; }
       th, td { border: 1px solid #000; padding: 8px; text-align: center; }
       table { border: 1px solid #000; }
     }
-    .print-only { display: none; }
   </style>
 </head>
 <body>
@@ -124,7 +115,7 @@
       const [loading, setLoading] = useState(true);
 
       const [activeTab, setActiveTab] = useState('stock');
-      const [showMore, setShowMore] = useState(false); // مینو کے لیے سٹیٹ
+      const [showMore, setShowMore] = useState(false);
       const [storeProfile, setStoreProfile] = useState({ storeName: 'میری دکان', phone: '', address: '' });
       
       const [suppliers, setSuppliers] = useState([]);
@@ -189,17 +180,6 @@
           }
       };
 
-      const handlePasswordReset = (e) => {
-          e.preventDefault();
-          const email = e.target.resetEmail.value;
-          firebase.auth().sendPasswordResetEmail(email)
-          .then(() => {
-              alert("پاس ورڈ ری سیٹ کرنے کا لنک ای میل کر دیا گیا ہے۔");
-              setAuthMode('login'); 
-          })
-          .catch(err => alert("ای میل بھیجنے میں مسئلہ: " + err.message));
-      };
-
       const handleLogout = () => { if(confirm('کیا آپ لاگ آؤٹ کرنا چاہتے ہیں؟')) firebase.auth().signOut(); };
 
       const getCustBal = (cId) => customerLedger.filter(l => l.customerId === cId).reduce((a,x) => x.type === 'bill' ? a + x.amount : a - x.amount, 0);
@@ -214,33 +194,18 @@
       const totalStuckReceivable = stuckCustomers.reduce((a,c) => a + getCustBal(c.id), 0);
 
       const filteredCash = cashLedger.filter(l => (l.date || '').startsWith(selectedMonth));
-      const monthCashIn = filteredCash.filter(l => l.type === 'in').reduce((a,c) => a + c.amount, 0);
-      const monthCashOut = filteredCash.filter(l => l.type === 'out').reduce((a,c) => a + c.amount, 0);
-
+      
       const toggleStuckStatus = (cust) => {
           const updatedCusts = customers.map(c => c.id === cust.id ? {...c, isStuck: !c.isStuck} : c);
           sync(storeProfile, suppliers, stock, ledger, stockHistory, updatedCusts, customerLedger, capitalAccounts, capitalLedger, cashLedger);
           setViewingCust({...cust, isStuck: !cust.isStuck}); 
       };
 
-      const handlePrint = () => { window.print(); };
-
-      const downloadBackup = () => {
-        let csv = "اسٹاک رپورٹ\nآئٹم,سپلائر,کل آرڈر,موجودہ اسٹاک,ریٹ,کل مالیت\n";
-        stock.forEach(s => { csv += `${s.name},${s.supplier},${s.totalOrdered||0},${s.qty},${s.rate},${s.qty*(s.rate||0)}\n`; });
-        csv += "\nسپلائر کھاتہ\nسپلائر کا نام,بقایا رقم\n";
-        suppliers.forEach(s => { const bal = ledger.filter(l=>l.supplierId===s.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0); csv += `${s.name},${bal}\n`; });
-        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a"); link.setAttribute("href", URL.createObjectURL(blob));
-        link.setAttribute("download", `${storeProfile.storeName}_بیک_اپ_${new Date().toLocaleDateString()}.csv`);
-        link.click();
-      };
-
       const deleteHistoryEntry = (h, item) => {
         if(confirm('کیا آپ واقعی یہ انٹری ڈیلیٹ کرنا چاہتے ہیں؟')) {
             let nStock = [...stock]; let nLedger = [...ledger];
             if(h.type === 'in') { nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty - h.qty} : s); if(h.ledgerId) nLedger = nLedger.filter(l => l.id !== h.ledgerId);
-            } else { nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty + h.qty, sold: (s.sold || 0) - h.qty} : s); }
+            } else { nStock = nStock.map(s => s.id === item.id ? {...s, qty: s.qty + h.qty} : s); }
             sync(storeProfile, suppliers, nStock, nLedger, stockHistory.filter(x => x.id !== h.id), customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal({type:'viewStockHistory', item: item}); 
         }
       };
@@ -258,26 +223,13 @@
           <div style={{background: '#2c3e50', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'}}>
             <div style={{background: 'white', padding: '30px', borderRadius: '15px', width: '100%', maxWidth: '400px', textAlign: 'center'}}>
               <h1 style={{color: '#2c3e50'}}>ڈیجیٹل کھاتہ</h1>
-              {authMode === 'reset' ? (
-                <div>
-                    <h2>پاس ورڈ ری سیٹ</h2>
-                    <form onSubmit={handlePasswordReset}>
-                        <input type="email" name="resetEmail" placeholder="ای میل" required />
-                        <button className="btn btn-blue" style={{width:'100%'}}>لنک بھیجیں</button>
-                    </form>
-                    <p style={{marginTop:'20px', cursor:'pointer', color:'#e74c3c'}} onClick={()=>setAuthMode('login')}>واپس</p>
-                </div>
-              ) : (
-                <div>
-                    <h2>{authMode === 'login' ? 'لاگ ان' : 'نیا اکاؤنٹ'}</h2>
-                    <form onSubmit={handleAuth}>
-                        <input type="email" name="email" placeholder="ای میل" required />
-                        <input type="password" name="password" placeholder="پاس ورڈ" required />
-                        <button className="btn btn-blue" style={{width:'100%'}}>{authMode === 'login' ? 'لاگ ان' : 'سائن اپ'}</button>
-                    </form>
-                    <p style={{marginTop:'15px', cursor:'pointer', color:'#3498db'}} onClick={()=>setAuthMode(authMode === 'login' ? 'signup' : 'login')}>{authMode === 'login' ? 'نیا اکاؤنٹ بنائیں' : 'لاگ ان کریں'}</p>
-                </div>
-              )}
+              <h2>{authMode === 'login' ? 'لاگ ان' : 'نیا اکاؤنٹ'}</h2>
+              <form onSubmit={handleAuth}>
+                  <input type="email" name="email" placeholder="ای میل" required />
+                  <input type="password" name="password" placeholder="پاس ورڈ" required />
+                  <button className="btn btn-blue" style={{width:'100%'}}>{authMode === 'login' ? 'لاگ ان' : 'سائن اپ'}</button>
+              </form>
+              <p style={{marginTop:'15px', cursor:'pointer', color:'#3498db'}} onClick={()=>setAuthMode(authMode === 'login' ? 'signup' : 'login')}>{authMode === 'login' ? 'نیا اکاؤنٹ بنائیں' : 'لاگ ان کریں'}</p>
             </div>
           </div>
         );
@@ -313,13 +265,12 @@
                     {activeTab === 'settings' && (
                       <div className="card">
                          <h3>دکان کی پروفائل</h3>
-                         <form onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync({ storeName: f.get('sName'), phone: f.get('phone'), address: f.get('address') }); alert("اپ ڈیٹ ہو گیا!"); }}>
+                         <form onSubmit={(e)=>{ e.preventDefault(); const f = new FormData(e.target); sync({ storeName: f.get('sName'), phone: f.get('phone'), address: f.get('address') }, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); alert("اپ ڈیٹ ہو گیا!"); }}>
                              <label>دکان کا نام:</label><input name="sName" defaultValue={storeProfile.storeName} required />
                              <label>فون:</label><input name="phone" defaultValue={storeProfile.phone} />
                              <label>ایڈریس:</label><input name="address" defaultValue={storeProfile.address} />
                              <button className="btn btn-blue" style={{width:'100%'}}>محفوظ کریں</button>
                          </form>
-                         <button className="btn btn-green" style={{width:'100%', marginTop:'20px'}} onClick={downloadBackup}>بیک اپ ڈاؤن لوڈ کریں</button>
                       </div>
                     )}
 
@@ -432,27 +383,77 @@
               ) : (
                 <div className="container">
                   <button className="btn btn-gray" onClick={()=>setViewingCap(null)}>← واپس</button>
-                  <div className="card"><h3>{viewingCap.name}</h3><button className="btn btn-green" onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ آمد</button><button className="btn btn-red" onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- خرچ</button></div>
+                  <div className="card"><h3>{viewingCap.name}</h3><button className="btn btn-green" onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})} style={{marginRight:'5px'}}>+ آمد</button><button className="btn btn-red" onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- خرچ</button></div>
                 </div>
               )}
           </div>
 
-          {/* Modal System */}
+          {/* Modal System (یہاں پر سارے غائب شدہ پاپ اپ واپس ڈال دیے گئے ہیں) */}
           {modal && (
             <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'400px'}}>
+                
                 {modal.type === 'addStock' && (
-                  <form onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, [...stock, {id:Date.now(), name:f.get('n'), supplier:f.get('s'), qty:0, rate:parseInt(f.get('r')), totalOrdered:parseInt(f.get('o'))}]); setModal(null); }}>
-                    <h3>نیا آئٹم</h3><input name="n" placeholder="نام" required /><input name="s" placeholder="سپلائر" required /><input name="o" type="number" placeholder="آرڈر مقدار" required /><input name="r" type="number" placeholder="ریٹ" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%'}}>کینسل</button>
+                  <form onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); sync(storeProfile, suppliers, [...stock, {id:Date.now(), name:f.get('n'), supplier:f.get('s'), qty:0, rate:parseInt(f.get('r')), totalOrdered:parseInt(f.get('o'))}], ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
+                    <h3>نیا آئٹم</h3><input name="n" placeholder="نام" required /><input name="s" placeholder="سپلائر" required /><input name="o" type="number" placeholder="آرڈر مقدار" required /><input name="r" type="number" placeholder="ریٹ" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
                   </form>
                 )}
+                
                 {modal.type === 'stockAction' && (
-                  <form onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const q=parseInt(f.get('q')); if(modal.actionType==='in'){ sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty+q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'in', qty:q}, ...stockHistory]); }else{ sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty-q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'out', qty:q}, ...stockHistory]); } setModal(null); }}>
-                    <h3>{modal.actionType==='in'?'مال آیا':'مال بکا'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} /><input name="q" type="number" placeholder="مقدار" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button>
+                  <form onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const q=parseInt(f.get('q')); if(modal.actionType==='in'){ sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty+q, totalOrdered:(s.totalOrdered||0)+q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'in', qty:q}, ...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); }else{ sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty-q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'out', qty:q}, ...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); } setModal(null); }}>
+                    <h3>{modal.actionType==='in'?'مال آیا':'مال بکا'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} /><input name="q" type="number" placeholder="مقدار" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
                   </form>
                 )}
-                {modal.type === 'addSup' && (<div><h3>نیا سپلائر</h3><input id="supName" placeholder="نام" /><button className="btn btn-blue" onClick={()=>{ sync(storeProfile, [...suppliers, {id:Date.now(), name:document.getElementById('supName').value}]); setModal(null); }}>محفوظ</button></div>)}
-                {modal.type === 'addCust' && (<div><h3>نیا کسٹمر</h3><input id="custName" placeholder="نام" /><button className="btn btn-blue" onClick={()=>{ sync(storeProfile, suppliers, stock, ledger, stockHistory, [...customers, {id:Date.now(), name:document.getElementById('custName').value}]); setModal(null); }}>محفوظ</button></div>)}
+                
+                {modal.type === 'addSup' && (<div><h3>نیا سپلائر</h3><input id="supName" placeholder="نام" /><button className="btn btn-blue" style={{width:'100%'}} onClick={()=>{ sync(storeProfile, [...suppliers, {id:Date.now(), name:document.getElementById('supName').value}], stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button></div>)}
+                
+                {modal.type === 'addCust' && (<div><h3>نیا کسٹمر</h3><input id="custName" placeholder="نام" /><button className="btn btn-blue" style={{width:'100%'}} onClick={()=>{ sync(storeProfile, suppliers, stock, ledger, stockHistory, [...customers, {id:Date.now(), name:document.getElementById('custName').value}], customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button></div>)}
+                
+                {/* سرمائے اور کیش کے پاپ اپ جو مس ہو گئے تھے */}
+                {modal.type === 'addCapAccount' && (
+                  <form onSubmit={(e)=>{ e.preventDefault(); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, [...capitalAccounts, {id:Date.now(), name:e.target.n.value}], capitalLedger, cashLedger); setModal(null); }}>
+                    <h3>نیا سرمایہ اکاؤنٹ</h3><input name="n" placeholder="اکاؤنٹ کا نام" required /><button className="btn btn-purple" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
+                  </form>
+                )}
+                
+                {modal.type === 'addCashEntry' && (
+                  <form onSubmit={(e)=>{ e.preventDefault(); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, [{id:Date.now(), date:e.target.d.value, amount:parseInt(e.target.a.value), note:e.target.n.value, type:modal.entryType}, ...cashLedger]); setModal(null); }}>
+                    <h3>{modal.entryType==='in'?'کیش آیا':'کیش گیا'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} required /><input name="a" type="number" placeholder="رقم" required /><input name="n" placeholder="تفصیل" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
+                  </form>
+                )}
+                
+                {modal.type === 'addCustEntry' && (
+                  <form onSubmit={(e)=>{ e.preventDefault(); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, [{id:Date.now(), customerId:viewingCust.id, date:e.target.d.value, amount:parseInt(e.target.a.value), note:e.target.n.value, type:modal.entryType==='bill'?'bill':'payment'}, ...customerLedger], capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
+                    <h3>{modal.entryType==='bill'?'نیا بل':'وصولی'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} required /><input name="a" type="number" placeholder="رقم" required /><input name="n" placeholder="تفصیل" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
+                  </form>
+                )}
+                
+                {modal.type === 'addEntry' && (
+                  <form onSubmit={(e)=>{ e.preventDefault(); sync(storeProfile, suppliers, stock, [{id:Date.now(), supplierId:viewingSup.id, date:e.target.d.value, amount:parseInt(e.target.a.value), note:e.target.n.value, type:modal.entryType}, ...ledger], stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>
+                    <h3>{modal.entryType==='bill'?'نیا بل':'ادائیگی'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} required /><input name="a" type="number" placeholder="رقم" required /><input name="n" placeholder="تفصیل" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
+                  </form>
+                )}
+                
+                {modal.type === 'addCapEntryMain' && (
+                  <form onSubmit={(e)=>{ e.preventDefault(); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, capitalAccounts, [{id:Date.now(), accountId:viewingCap.id, date:e.target.d.value, amount:parseInt(e.target.a.value), note:e.target.n.value, type:modal.entryType}, ...capitalLedger], cashLedger); setModal(null); }}>
+                     <h3>{modal.entryType==='in'?'سرمایہ آیا':'سرمایہ نکالا'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} required /><input name="a" type="number" placeholder="رقم" required /><input name="n" placeholder="تفصیل" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
+                  </form>
+                )}
+                
+                {modal.type === 'viewStockHistory' && (
+                  <div>
+                    <h3>اسٹاک ہسٹری</h3>
+                    <div style={{maxHeight:'300px', overflowY:'auto', direction:'rtl'}}>
+                      <table style={{fontSize:'12px'}}><thead><tr><th>تاریخ</th><th>قسم</th><th>مقدار</th><th>ایکشن</th></tr></thead><tbody>
+                        {stockHistory.filter(h=>h.itemId===modal.item.id).map(h=>(
+                          <tr key={h.id}><td>{h.date}</td><td style={{color:h.type==='in'?'green':'red'}}>{h.type==='in'?'آمد':'فروخت'}</td><td>{h.qty}</td><td><button className="btn btn-red" style={{padding:'2px 5px'}} onClick={()=>deleteHistoryEntry(h, modal.item)}>X</button></td></tr>
+                        ))}
+                      </tbody></table>
+                    </div>
+                    <button className="btn btn-gray" style={{width:'100%', marginTop:'10px'}} onClick={()=>setModal(null)}>بند کریں</button>
+                  </div>
+                )}
+
               </div>
             </div>
           )}
@@ -472,4 +473,3 @@
   </script>
 </body>
 </html>
-
