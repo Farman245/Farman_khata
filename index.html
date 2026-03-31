@@ -249,6 +249,18 @@
       const filteredStuckCustomers = stuckCustomers.filter(c => c.name.includes(stuckSearch));
       const filteredCapitals = capitalAccounts.filter(c => c.name.includes(capSearch));
 
+      // سپلائر کا کل حساب
+      const activeSupLedger = viewingSup ? ledger.filter(l=>l.supplierId===viewingSup.id) : [];
+      const totalSupBill = activeSupLedger.reduce((a,c)=>c.type==='bill'?a+c.amount:a, 0);
+      const totalSupPaid = activeSupLedger.reduce((a,c)=>c.type==='payment'?a+c.amount:a, 0);
+      const supBal = totalSupBill - totalSupPaid;
+
+      // کسٹمر کا کل حساب
+      const activeCustLedger = viewingCust ? customerLedger.filter(l=>l.customerId===viewingCust.id) : [];
+      const totalCustBill = activeCustLedger.reduce((a,c)=>c.type==='bill'?a+c.amount:a, 0);
+      const totalCustPaid = activeCustLedger.reduce((a,c)=>c.type==='payment'?a+c.amount:a, 0);
+      const custBal = totalCustBill - totalCustPaid;
+
       if (loading) return <div style={{textAlign:'center', padding:'50px'}}>لوڈ ہو رہا ہے...</div>;
 
       if (!user) {
@@ -311,7 +323,6 @@
                       <div>
                         <div className="total-banner">گودام مالیت: {totalValue.toLocaleString()} Rs</div>
                         
-                        {/* اسٹاک مین پیج: پرنٹ اور ایکسل */}
                         <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
                             <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ لسٹ</button>
                             <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
@@ -349,7 +360,6 @@
                       <div>
                         <div className="total-banner" style={{background:'#e74c3c'}}>کل واجب الادا: {totalPayable.toLocaleString()} Rs</div>
                         
-                        {/* سپلائر مین پیج: پرنٹ اور ایکسل */}
                         <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
                             <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ لسٹ</button>
                             <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
@@ -383,7 +393,6 @@
                       <div>
                         <div className="total-banner" style={{background:'#2ecc71'}}>ایکٹو کسٹمر بیلنس: {totalActiveReceivable.toLocaleString()} Rs</div>
                         
-                        {/* کسٹمر مین پیج: پرنٹ اور ایکسل */}
                         <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
                             <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ لسٹ</button>
                             <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
@@ -444,7 +453,6 @@
                       <div>
                         <div className="total-banner" style={{background:'#34495e'}}>رکے کھاتے: {totalStuckReceivable.toLocaleString()} Rs</div>
                         
-                        {/* رکے کھاتے: پرنٹ اور ایکسل */}
                         <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
                             <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ لسٹ</button>
                             <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
@@ -473,7 +481,6 @@
                       <div>
                         <div className="total-banner" style={{background:'#9b59b6'}}>کل سرمایہ: {totalCapital.toLocaleString()} Rs</div>
                         
-                        {/* سرمایہ مین پیج: پرنٹ اور ایکسل */}
                         <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
                             <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ لسٹ</button>
                             <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
@@ -509,7 +516,13 @@
                   <button className="btn btn-gray no-print" onClick={()=>setViewingSup(null)}>← واپس</button>
                   <div className="card">
                     <h3>{viewingSup.name} (سپلائر)</h3>
-                    <div className="summary-box"><div className="balance-highlight">بقایا رقم: {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()}</div></div>
+                    
+                    {/* سپلائر کھاتہ: 3 خوبصورت ڈبے */}
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'5px', marginBottom:'15px', textAlign:'center', fontSize:'12px'}}>
+                        <div style={{background:'#ffeaa7', padding:'10px', borderRadius:'8px', border:'1px solid #fdcb6e'}}><strong>کل مال آیا</strong><br/><span style={{color:'#d35400', fontSize:'15px', fontWeight:'bold'}}>{totalSupBill.toLocaleString()}</span></div>
+                        <div style={{background:'#55efc4', padding:'10px', borderRadius:'8px', border:'1px solid #00b894'}}><strong>کل ادائیگی</strong><br/><span style={{color:'#006266', fontSize:'15px', fontWeight:'bold'}}>{totalSupPaid.toLocaleString()}</span></div>
+                        <div style={{background:'#fff', border:'2px solid #e74c3c', padding:'10px', borderRadius:'8px'}}><strong>بقایا رقم</strong><br/><span style={{color:'#e74c3c', fontSize:'15px', fontWeight:'bold'}}>{supBal.toLocaleString()}</span></div>
+                    </div>
                     
                     <div style={{display:'flex', gap:'5px'}} className="no-print">
                         <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>بل انٹری</button>
@@ -517,7 +530,7 @@
                         <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ</button>
                         <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
                             const headers = ['تاریخ', 'تفصیل', 'بل', 'ادا'];
-                            const data = ledger.filter(l=>l.supplierId===viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='bill'?l.amount:'-', l.type==='payment'?l.amount:'-']);
+                            const data = activeSupLedger.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='bill'?l.amount:'-', l.type==='payment'?l.amount:'-']);
                             exportToExcel(headers, data, viewingSup.name + '_Ledger');
                         }}>ایکسل</button>
                     </div>
@@ -526,7 +539,7 @@
                     <table>
                       <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>ادا</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
-                        {ledger.filter(l=>l.supplierId===viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(
+                        {activeSupLedger.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(
                           <tr key={l.id}>
                             <td>{l.date}</td><td>{l.note}</td><td>{l.type==='bill'?l.amount:'-'}</td><td>{l.type==='payment'?l.amount:'-'}</td>
                             <td className="no-print">
@@ -544,7 +557,13 @@
                   <button className="btn btn-gray no-print" onClick={()=>setViewingCust(null)}>← واپس</button>
                   <div className="card">
                     <h3>{viewingCust.name} {viewingCust.isStuck ? '(رکا کھاتہ)' : ''}</h3>
-                    <div className="summary-box"><div className="balance-highlight">بقایا: {getCustBal(viewingCust.id).toLocaleString()}</div></div>
+                    
+                    {/* کسٹمر کھاتہ: 3 خوبصورت ڈبے */}
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'5px', marginBottom:'15px', textAlign:'center', fontSize:'12px'}}>
+                        <div style={{background:'#fab1a0', padding:'10px', borderRadius:'8px', border:'1px solid #e17055'}}><strong>کل مال گیا</strong><br/><span style={{color:'#c0392b', fontSize:'15px', fontWeight:'bold'}}>{totalCustBill.toLocaleString()}</span></div>
+                        <div style={{background:'#81ecec', padding:'10px', borderRadius:'8px', border:'1px solid #00cec9'}}><strong>کل وصولی</strong><br/><span style={{color:'#008080', fontSize:'15px', fontWeight:'bold'}}>{totalCustPaid.toLocaleString()}</span></div>
+                        <div style={{background:'#fff', border:'2px solid #2ecc71', padding:'10px', borderRadius:'8px'}}><strong>بقایا رقم</strong><br/><span style={{color:'#27ae60', fontSize:'15px', fontWeight:'bold'}}>{custBal.toLocaleString()}</span></div>
+                    </div>
                     
                     <div style={{display:'flex', gap:'5px'}} className="no-print">
                         <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'bill'})}>بل</button>
@@ -552,7 +571,7 @@
                         <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ</button>
                         <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
                             const headers = ['تاریخ', 'تفصیل', 'بل', 'وصولی'];
-                            const data = customerLedger.filter(l=>l.customerId===viewingCust.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='bill'?l.amount:'-', l.type==='payment'?l.amount:'-']);
+                            const data = activeCustLedger.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='bill'?l.amount:'-', l.type==='payment'?l.amount:'-']);
                             exportToExcel(headers, data, viewingCust.name + '_Khata');
                         }}>ایکسل</button>
                     </div>
@@ -563,7 +582,7 @@
                     <table>
                       <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>وصولی</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
-                        {customerLedger.filter(l=>l.customerId===viewingCust.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(
+                        {activeCustLedger.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(
                           <tr key={l.id}>
                             <td>{l.date}</td><td>{l.note}</td><td>{l.type==='bill'?l.amount:'-'}</td><td>{l.type==='payment'?l.amount:'-'}</td>
                             <td className="no-print">
@@ -613,7 +632,6 @@
             <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'400px'}}>
                 
-                {/* نام تبدیل کرنے کا موڈل */}
                 {modal.type === 'editName' && (
                   <form onSubmit={(e)=>{ 
                       e.preventDefault(); 
@@ -638,7 +656,6 @@
                   </form>
                 )}
 
-                {/* انٹری تبدیل کرنے کا موڈل */}
                 {modal.type === 'editEntry' && (
                   <form onSubmit={(e)=>{ 
                       e.preventDefault(); 
@@ -664,7 +681,6 @@
                   </form>
                 )}
 
-                {/* مال/اسٹاک تبدیل کرنے کا موڈل */}
                 {modal.type === 'editStock' && (
                   <form onSubmit={(e)=>{ 
                       e.preventDefault(); 
