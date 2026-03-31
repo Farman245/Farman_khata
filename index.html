@@ -182,6 +182,20 @@
 
       const handleLogout = () => { if(confirm('کیا آپ لاگ آؤٹ کرنا چاہتے ہیں؟')) firebase.auth().signOut(); };
 
+      // ایکسل ڈاؤنلوڈ کرنے کا کسٹم فنکشن
+      const exportToExcel = (headers, dataArray, fileName) => {
+        if (!dataArray || dataArray.length === 0) return alert("ڈاؤنلوڈ کرنے کے لیے کوئی ڈیٹا موجود نہیں!");
+        let csvContent = '\uFEFF' + headers.join(",") + "\n";
+        dataArray.forEach(row => {
+            csvContent += row.map(cell => `"${cell || ''}"`).join(",") + "\n";
+        });
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = fileName + ".csv";
+        link.click();
+      };
+
       const getCustBal = (cId) => customerLedger.filter(l => l.customerId === cId).reduce((a,x) => x.type === 'bill' ? a + x.amount : a - x.amount, 0);
       const totalValue = stock.reduce((acc, s) => acc + (s.qty * (s.rate || 0)), 0);
       const totalPayable = ledger.reduce((acc, c) => c.type === 'bill' ? acc + c.amount : acc - c.amount, 0); 
@@ -280,12 +294,12 @@
                         <input type="text" className="search-input" placeholder="تلاش کریں..." value={stockSearch} onChange={(e)=>setStockSearch(e.target.value)} />
                         <div className="card">
                           <table>
-                            <thead><tr><th>آئٹم</th><th>آرڈر</th><th>موجود</th><th>ایکشن</th></tr></thead>
+                            <thead><tr><th>آئٹم</th><th>آرڈر</th><th>موجود</th><th className="no-print">ایکشن</th></tr></thead>
                             <tbody>
                               {filteredStock.map(s => (
                                 <tr key={s.id}>
                                   <td><strong>{s.name}</strong><br/><small>{s.supplier}</small></td><td>{s.totalOrdered}</td><td>{s.qty}</td>
-                                  <td>
+                                  <td className="no-print">
                                     <button className="btn btn-green" onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
                                     <button className="btn btn-orange" onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
                                     <button className="btn btn-blue" onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
@@ -294,7 +308,7 @@
                               ))}
                             </tbody>
                           </table>
-                          <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}} onClick={()=>setModal({type:'addStock'})}>+ نیا آئٹم</button>
+                          <button className="btn btn-blue no-print" style={{width:'100%', marginTop:'10px'}} onClick={()=>setModal({type:'addStock'})}>+ نیا آئٹم</button>
                         </div>
                       </div>
                     )}
@@ -302,7 +316,7 @@
                     {activeTab === 'ledger' && (
                       <div>
                         <div className="total-banner" style={{background:'#e74c3c'}}>کل واجب الادا: {totalPayable.toLocaleString()} Rs</div>
-                        <button className="btn btn-blue" style={{width:'100%', marginBottom:'10px'}} onClick={()=>setModal({type:'addSup'})}>+ نیا سپلائر</button>
+                        <button className="btn btn-blue no-print" style={{width:'100%', marginBottom:'10px'}} onClick={()=>setModal({type:'addSup'})}>+ نیا سپلائر</button>
                         <input type="text" className="search-input" placeholder="تلاش..." value={supplierSearch} onChange={(e)=>setSupplierSearch(e.target.value)} />
                         {filteredSuppliers.map(s => {
                           const bal = ledger.filter(l=>l.supplierId===s.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0);
@@ -314,7 +328,7 @@
                     {activeTab === 'customers' && (
                       <div>
                         <div className="total-banner" style={{background:'#2ecc71'}}>ایکٹو کسٹمر بیلنس: {totalActiveReceivable.toLocaleString()} Rs</div>
-                        <button className="btn btn-blue" style={{width:'100%', marginBottom:'10px'}} onClick={()=>setModal({type:'addCust'})}>+ نیا کسٹمر</button>
+                        <button className="btn btn-blue no-print" style={{width:'100%', marginBottom:'10px'}} onClick={()=>setModal({type:'addCust'})}>+ نیا کسٹمر</button>
                         <input type="text" className="search-input" placeholder="تلاش..." value={custSearch} onChange={(e)=>setCustSearch(e.target.value)} />
                         {filteredActiveCustomers.map(c => {
                           const bal = getCustBal(c.id);
@@ -326,8 +340,20 @@
                     {activeTab === 'cash' && (
                       <div>
                         <div className="total-banner" style={{background:'#f39c12'}}>موجودہ کیش: {totalCash.toLocaleString()} Rs</div>
-                        <div style={{display:'flex', gap:'5px', marginBottom:'10px'}}><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCashEntry', entryType:'in'})}>آمد</button><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCashEntry', entryType:'out'})}>خرچ</button></div>
-                        <input type="month" value={selectedMonth} onChange={(e)=>setSelectedMonth(e.target.value)} />
+                        
+                        {/* کیش بک کے نئے پرنٹ اور ایکسل بٹن */}
+                        <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
+                            <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCashEntry', entryType:'in'})}>آمد</button>
+                            <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCashEntry', entryType:'out'})}>خرچ</button>
+                            <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ</button>
+                            <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
+                                const headers = ['تاریخ', 'تفصیل', 'آمد', 'خرچ'];
+                                const data = filteredCash.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='in'?l.amount:'-', l.type==='out'?l.amount:'-']);
+                                exportToExcel(headers, data, 'Cashbook_' + selectedMonth);
+                            }}>ایکسل</button>
+                        </div>
+                        
+                        <input type="month" className="no-print" value={selectedMonth} onChange={(e)=>setSelectedMonth(e.target.value)} />
                         <div className="card">
                           <table><thead><tr><th>تاریخ</th><th>تفصیل</th><th>آمد</th><th>خرچ</th></tr></thead><tbody>
                             {filteredCash.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (<tr key={l.id}><td>{l.date}</td><td>{l.note}</td><td style={{color:'green'}}>{l.type==='in'?l.amount:'-'}</td><td style={{color:'red'}}>{l.type==='out'?l.amount:'-'}</td></tr>))}
@@ -349,7 +375,7 @@
                     {activeTab === 'capital' && (
                       <div>
                         <div className="total-banner" style={{background:'#9b59b6'}}>کل سرمایہ: {totalCapital.toLocaleString()} Rs</div>
-                        <button className="btn btn-purple" style={{width:'100%', marginBottom:'10px'}} onClick={()=>setModal({type:'addCapAccount'})}>+ نیا سرمایہ اکاؤنٹ</button>
+                        <button className="btn btn-purple no-print" style={{width:'100%', marginBottom:'10px'}} onClick={()=>setModal({type:'addCapAccount'})}>+ نیا سرمایہ اکاؤنٹ</button>
                         {filteredCapitals.map(c => {
                            const bal = capitalLedger.filter(l=>l.accountId===c.id).reduce((a,x)=>x.type==='in'?a+x.amount:a-x.amount,0);
                            return (<div className="card" key={c.id} onClick={()=>setViewingCap(c)} style={{cursor:'pointer', borderRight:'5px solid #9b59b6'}}><strong>{c.name}</strong><div>بیلنس: {bal.toLocaleString()}</div></div>);
@@ -361,34 +387,58 @@
                 </>
               ) : viewingSup ? (
                 <div className="container">
-                  <button className="btn btn-gray" onClick={()=>setViewingSup(null)}>← واپس</button>
+                  <button className="btn btn-gray no-print" onClick={()=>setViewingSup(null)}>← واپس</button>
                   <div className="card">
                     <h3>{viewingSup.name} (سپلائر)</h3>
                     <div className="summary-box"><div className="balance-highlight">بقایا رقم: {ledger.filter(l=>l.supplierId===viewingSup.id).reduce((a,c)=>c.type==='bill'?a+c.amount:a-c.amount,0).toLocaleString()}</div></div>
-                    <div style={{display:'flex', gap:'5px'}}><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>بل انٹری</button><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>ادائیگی</button></div>
+                    
+                    {/* سپلائر کے کھاتے کے نئے پرنٹ اور ایکسل بٹن */}
+                    <div style={{display:'flex', gap:'5px'}} className="no-print">
+                        <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'bill'})}>بل انٹری</button>
+                        <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addEntry', entryType:'payment'})}>ادائیگی</button>
+                        <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ</button>
+                        <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
+                            const headers = ['تاریخ', 'تفصیل', 'بل', 'ادا'];
+                            const data = ledger.filter(l=>l.supplierId===viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='bill'?l.amount:'-', l.type==='payment'?l.amount:'-']);
+                            exportToExcel(headers, data, viewingSup.name + '_Ledger');
+                        }}>ایکسل</button>
+                    </div>
+
                   </div>
                   <div className="card"><table><thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>ادا</th></tr></thead><tbody>{ledger.filter(l=>l.supplierId===viewingSup.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(<tr key={l.id}><td>{l.date}</td><td>{l.note}</td><td>{l.type==='bill'?l.amount:'-'}</td><td>{l.type==='payment'?l.amount:'-'}</td></tr>))}</tbody></table></div>
                 </div>
               ) : viewingCust ? (
                 <div className="container">
-                  <button className="btn btn-gray" onClick={()=>setViewingCust(null)}>← واپس</button>
+                  <button className="btn btn-gray no-print" onClick={()=>setViewingCust(null)}>← واپس</button>
                   <div className="card">
                     <h3>{viewingCust.name} {viewingCust.isStuck ? '(رکا کھاتہ)' : ''}</h3>
                     <div className="summary-box"><div className="balance-highlight">بقایا: {getCustBal(viewingCust.id).toLocaleString()}</div></div>
-                    <div style={{display:'flex', gap:'5px'}}><button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'bill'})}>بل</button><button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'وصولی'})}>وصولی</button></div>
-                    <button className="btn btn-dark" style={{width:'100%', marginTop:'10px'}} onClick={()=>toggleStuckStatus(viewingCust)}>{viewingCust.isStuck ? 'ایکٹو کریں' : 'رکے کھاتوں میں ڈالیں'}</button>
+                    
+                    {/* کسٹمر کے کھاتے کے نئے پرنٹ اور ایکسل بٹن */}
+                    <div style={{display:'flex', gap:'5px'}} className="no-print">
+                        <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'bill'})}>بل</button>
+                        <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCustEntry', entryType:'وصولی'})}>وصولی</button>
+                        <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ</button>
+                        <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
+                            const headers = ['تاریخ', 'تفصیل', 'بل', 'وصولی'];
+                            const data = customerLedger.filter(l=>l.customerId===viewingCust.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => [l.date, l.note, l.type==='bill'?l.amount:'-', l.type==='payment'?l.amount:'-']);
+                            exportToExcel(headers, data, viewingCust.name + '_Khata');
+                        }}>ایکسل</button>
+                    </div>
+
+                    <button className="btn btn-dark no-print" style={{width:'100%', marginTop:'10px'}} onClick={()=>toggleStuckStatus(viewingCust)}>{viewingCust.isStuck ? 'ایکٹو کریں' : 'رکے کھاتوں میں ڈالیں'}</button>
                   </div>
                   <div className="card"><table><thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>وصولی</th></tr></thead><tbody>{customerLedger.filter(l=>l.customerId===viewingCust.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(<tr key={l.id}><td>{l.date}</td><td>{l.note}</td><td>{l.type==='bill'?l.amount:'-'}</td><td>{l.type==='payment'?l.amount:'-'}</td></tr>))}</tbody></table></div>
                 </div>
               ) : (
                 <div className="container">
-                  <button className="btn btn-gray" onClick={()=>setViewingCap(null)}>← واپس</button>
-                  <div className="card"><h3>{viewingCap.name}</h3><button className="btn btn-green" onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})} style={{marginRight:'5px'}}>+ آمد</button><button className="btn btn-red" onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- خرچ</button></div>
+                  <button className="btn btn-gray no-print" onClick={()=>setViewingCap(null)}>← واپس</button>
+                  <div className="card"><h3>{viewingCap.name}</h3><button className="btn btn-green no-print" onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})} style={{marginRight:'5px'}}>+ آمد</button><button className="btn btn-red no-print" onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- خرچ</button></div>
                 </div>
               )}
           </div>
 
-          {/* Modal System (یہاں پر سارے غائب شدہ پاپ اپ واپس ڈال دیے گئے ہیں) */}
+          {/* Modal System */}
           {modal && (
             <div className="modal">
               <div className="card" style={{width:'90%', maxWidth:'400px'}}>
@@ -409,7 +459,6 @@
                 
                 {modal.type === 'addCust' && (<div><h3>نیا کسٹمر</h3><input id="custName" placeholder="نام" /><button className="btn btn-blue" style={{width:'100%'}} onClick={()=>{ sync(storeProfile, suppliers, stock, ledger, stockHistory, [...customers, {id:Date.now(), name:document.getElementById('custName').value}], customerLedger, capitalAccounts, capitalLedger, cashLedger); setModal(null); }}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button></div>)}
                 
-                {/* سرمائے اور کیش کے پاپ اپ جو مس ہو گئے تھے */}
                 {modal.type === 'addCapAccount' && (
                   <form onSubmit={(e)=>{ e.preventDefault(); sync(storeProfile, suppliers, stock, ledger, stockHistory, customers, customerLedger, [...capitalAccounts, {id:Date.now(), name:e.target.n.value}], capitalLedger, cashLedger); setModal(null); }}>
                     <h3>نیا سرمایہ اکاؤنٹ</h3><input name="n" placeholder="اکاؤنٹ کا نام" required /><button className="btn btn-purple" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
@@ -443,14 +492,25 @@
                 {modal.type === 'viewStockHistory' && (
                   <div>
                     <h3>اسٹاک ہسٹری</h3>
+                    
+                    {/* اسٹاک ہسٹری کے نئے پرنٹ اور ایکسل بٹن */}
+                    <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
+                        <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ</button>
+                        <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
+                            const headers = ['تاریخ', 'قسم', 'مقدار'];
+                            const data = stockHistory.filter(h=>h.itemId===modal.item.id).map(h => [h.date, h.type==='in'?'آمد':'فروخت', h.qty]);
+                            exportToExcel(headers, data, modal.item.name + '_StockHistory');
+                        }}>ایکسل</button>
+                    </div>
+
                     <div style={{maxHeight:'300px', overflowY:'auto', direction:'rtl'}}>
-                      <table style={{fontSize:'12px'}}><thead><tr><th>تاریخ</th><th>قسم</th><th>مقدار</th><th>ایکشن</th></tr></thead><tbody>
+                      <table style={{fontSize:'12px'}}><thead><tr><th>تاریخ</th><th>قسم</th><th>مقدار</th><th className="no-print">ایکشن</th></tr></thead><tbody>
                         {stockHistory.filter(h=>h.itemId===modal.item.id).map(h=>(
-                          <tr key={h.id}><td>{h.date}</td><td style={{color:h.type==='in'?'green':'red'}}>{h.type==='in'?'آمد':'فروخت'}</td><td>{h.qty}</td><td><button className="btn btn-red" style={{padding:'2px 5px'}} onClick={()=>deleteHistoryEntry(h, modal.item)}>X</button></td></tr>
+                          <tr key={h.id}><td>{h.date}</td><td style={{color:h.type==='in'?'green':'red'}}>{h.type==='in'?'آمد':'فروخت'}</td><td>{h.qty}</td><td className="no-print"><button className="btn btn-red" style={{padding:'2px 5px'}} onClick={()=>deleteHistoryEntry(h, modal.item)}>X</button></td></tr>
                         ))}
                       </tbody></table>
                     </div>
-                    <button className="btn btn-gray" style={{width:'100%', marginTop:'10px'}} onClick={()=>setModal(null)}>بند کریں</button>
+                    <button className="btn btn-gray no-print" style={{width:'100%', marginTop:'10px'}} onClick={()=>setModal(null)}>بند کریں</button>
                   </div>
                 )}
 
