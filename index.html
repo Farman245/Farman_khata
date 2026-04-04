@@ -340,12 +340,12 @@
                               {filteredStock.map(s => (
                                 <tr key={s.id}>
                                   <td><strong>{s.name}</strong><br/><small>{s.supplier}</small></td><td>{s.totalOrdered}</td><td>{s.qty}</td>
-                                  <td className="no-print" style={{minWidth:'140px'}}>
-                                    <button className="btn btn-green" style={{padding:'4px'}} onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
-                                    <button className="btn btn-orange" style={{padding:'4px'}} onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
-                                    <button className="btn btn-blue" style={{padding:'4px'}} onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
-                                    <button className="btn btn-gray" style={{padding:'4px'}} onClick={()=>setModal({type:'editStock', item:s})}>✎</button>
-                                    <button className="btn btn-red" style={{padding:'4px'}} onClick={()=>deleteRecord('stock', s.id)}>🗑</button>
+                                  <td className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
+                                    <button className="btn btn-green" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
+                                    <button className="btn btn-orange" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
+                                    <button className="btn btn-blue" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
+                                    <button className="btn btn-gray" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'editStock', item:s})}>✎</button>
+                                    <button className="btn btn-red" style={{padding:'6px 10px'}} onClick={()=>deleteRecord('stock', s.id)}>🗑</button>
                                   </td>
                                 </tr>
                               ))}
@@ -685,15 +685,34 @@
                   <form onSubmit={(e)=>{ 
                       e.preventDefault(); 
                       const f=new FormData(e.target);
-                      let nSt = stock.map(x=>x.id===modal.item.id ? {...x, name:f.get('n'), supplier:f.get('s'), rate:parseInt(f.get('r'))} : x);
+                      let nSt = stock.map(x=>x.id===modal.item.id ? {
+                          ...x, 
+                          name: f.get('n'), 
+                          supplier: f.get('s'), 
+                          rate: parseInt(f.get('r')),
+                          qty: parseInt(f.get('q')),
+                          totalOrdered: parseInt(f.get('o'))
+                      } : x);
                       sync(storeProfile, suppliers, nSt, ledger, stockHistory, customers, customerLedger, capitalAccounts, capitalLedger, cashLedger);
                       setModal(null);
                   }}>
                     <h3>آئٹم تبدیل کریں</h3>
+                    <label style={{fontSize: '12px', color: '#7f8c8d'}}>آئٹم کا نام:</label>
                     <input name="n" defaultValue={modal.item.name} required />
+                    
+                    <label style={{fontSize: '12px', color: '#7f8c8d'}}>سپلائر کا نام:</label>
                     <input name="s" defaultValue={modal.item.supplier} required />
+                    
+                    <label style={{fontSize: '12px', color: '#7f8c8d'}}>ریٹ:</label>
                     <input name="r" type="number" defaultValue={modal.item.rate} required />
-                    <button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button>
+                    
+                    <label style={{fontSize: '12px', color: '#7f8c8d'}}>موجود مقدار (اسٹاک):</label>
+                    <input name="q" type="number" defaultValue={modal.item.qty} required />
+                    
+                    <label style={{fontSize: '12px', color: '#7f8c8d'}}>آرڈر کی مقدار:</label>
+                    <input name="o" type="number" defaultValue={modal.item.totalOrdered || 0} required />
+                    
+                    <button className="btn btn-blue" style={{width:'100%', marginTop:'10px'}}>محفوظ کریں</button>
                     <button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
                   </form>
                 )}
@@ -705,8 +724,22 @@
                 )}
                 
                 {modal.type === 'stockAction' && (
-                  <form onSubmit={(e)=>{ e.preventDefault(); const f=new FormData(e.target); const q=parseInt(f.get('q')); if(modal.actionType==='in'){ sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty+q, totalOrdered:(s.totalOrdered||0)+q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'in', qty:q}, ...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); }else{ sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty-q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'out', qty:q}, ...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); } setModal(null); }}>
-                    <h3>{modal.actionType==='in'?'مال آیا':'مال بکا'}</h3><input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} /><input name="q" type="number" placeholder="مقدار" required /><button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button><button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
+                  <form onSubmit={(e)=>{ 
+                      e.preventDefault(); 
+                      const f=new FormData(e.target); 
+                      const q=parseInt(f.get('q')); 
+                      if(modal.actionType==='in'){ 
+                          sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty+q, totalOrdered:Math.max(0, (s.totalOrdered||0)-q)}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'in', qty:q}, ...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); 
+                      }else{ 
+                          sync(storeProfile, suppliers, stock.map(s=>s.id===modal.item.id?{...s,qty:s.qty-q}:s), ledger, [{id:Date.now(), itemId:modal.item.id, date:f.get('d'), type:'out', qty:q}, ...stockHistory], customers, customerLedger, capitalAccounts, capitalLedger, cashLedger); 
+                      } 
+                      setModal(null); 
+                  }}>
+                    <h3>{modal.actionType==='in'?'مال آیا':'مال بکا'}</h3>
+                    <input name="d" type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                    <input name="q" type="number" placeholder="مقدار" required />
+                    <button className="btn btn-blue" style={{width:'100%'}}>محفوظ</button>
+                    <button type="button" onClick={()=>setModal(null)} className="btn btn-gray" style={{width:'100%', marginTop:'5px'}}>کینسل</button>
                   </form>
                 )}
                 
@@ -786,3 +819,4 @@
   </script>
 </body>
 </html>
+ 
