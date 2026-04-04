@@ -261,6 +261,12 @@
       const totalCustPaid = activeCustLedger.reduce((a,c)=>c.type==='payment'?a+c.amount:a, 0);
       const custBal = totalCustBill - totalCustPaid;
 
+      // سرمایہ کا کل حساب
+      const activeCapLedger = viewingCap ? capitalLedger.filter(l=>l.accountId===viewingCap.id) : [];
+      const totalCapIn = activeCapLedger.reduce((a,c)=>c.type==='in'?a+c.amount:a, 0);
+      const totalCapOut = activeCapLedger.reduce((a,c)=>c.type==='out'?a+c.amount:a, 0);
+      const capBal = totalCapIn - totalCapOut;
+
       if (loading) return <div style={{textAlign:'center', padding:'50px'}}>لوڈ ہو رہا ہے...</div>;
 
       if (!user) {
@@ -600,6 +606,14 @@
                   <button className="btn btn-gray no-print" onClick={()=>setViewingCap(null)}>← واپس</button>
                   <div className="card">
                     <h3>{viewingCap.name}</h3>
+
+                    {/* سرمایہ کھاتہ: 3 خوبصورت ڈبے */}
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'5px', marginBottom:'15px', textAlign:'center', fontSize:'12px'}}>
+                        <div style={{background:'#55efc4', padding:'10px', borderRadius:'8px', border:'1px solid #00b894'}}><strong>کل آمد</strong><br/><span style={{color:'#006266', fontSize:'15px', fontWeight:'bold'}}>{totalCapIn.toLocaleString()}</span></div>
+                        <div style={{background:'#fab1a0', padding:'10px', borderRadius:'8px', border:'1px solid #e17055'}}><strong>کل خرچ</strong><br/><span style={{color:'#c0392b', fontSize:'15px', fontWeight:'bold'}}>{totalCapOut.toLocaleString()}</span></div>
+                        <div style={{background:'#fff', border:'2px solid #9b59b6', padding:'10px', borderRadius:'8px'}}><strong>موجودہ بیلنس</strong><br/><span style={{color:'#8e44ad', fontSize:'15px', fontWeight:'bold'}}>{capBal.toLocaleString()}</span></div>
+                    </div>
+
                     <div style={{display:'flex', gap:'5px'}} className="no-print">
                       <button className="btn btn-green" style={{flex:1}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'in'})}>+ آمد</button>
                       <button className="btn btn-red" style={{flex:1}} onClick={()=>setModal({type:'addCapEntryMain', entryType:'out'})}>- خرچ</button>
@@ -610,7 +624,7 @@
                     <table>
                       <thead><tr><th>تاریخ</th><th>تفصیل</th><th>آمد</th><th>خرچ</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
-                        {capitalLedger.filter(l=>l.accountId===viewingCap.id).sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(
+                        {activeCapLedger.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l=>(
                           <tr key={l.id}>
                             <td>{l.date}</td><td>{l.note}</td><td>{l.type==='in'?l.amount:'-'}</td><td>{l.type==='out'?l.amount:'-'}</td>
                             <td className="no-print">
@@ -819,4 +833,3 @@
   </script>
 </body>
 </html>
- 
