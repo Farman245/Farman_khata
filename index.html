@@ -204,6 +204,15 @@
           }
       };
 
+      const handlePasswordReset = () => {
+          const email = prompt("اکاؤنٹ کی ریکوری کے لیے اپنا رجسٹرڈ ای میل درج کریں:");
+          if(email) {
+              firebase.auth().sendPasswordResetEmail(email)
+              .then(() => alert("پاس ورڈ ری سیٹ لنک آپ کے ای میل پر بھیج دیا گیا ہے۔ اپنا ان باکس چیک کریں!"))
+              .catch(err => alert("ریکوری میں مسئلہ: " + err.message));
+          }
+      };
+
       const handleLogout = () => { if(confirm('کیا آپ لاگ آؤٹ کرنا چاہتے ہیں؟')) firebase.auth().signOut(); };
 
       const exportToExcel = (headers, dataArray, fileName) => {
@@ -296,6 +305,9 @@
                   <button className="btn btn-blue" style={{width:'100%'}}>{authMode === 'login' ? 'لاگ ان' : 'سائن اپ'}</button>
               </form>
               <p style={{marginTop:'15px', cursor:'pointer', color:'#3498db'}} onClick={()=>setAuthMode(authMode === 'login' ? 'signup' : 'login')}>{authMode === 'login' ? 'نیا اکاؤنٹ بنائیں' : 'لاگ ان کریں'}</p>
+              {authMode === 'login' && (
+                  <p style={{marginTop:'10px', cursor:'pointer', color:'#e74c3c', fontSize:'14px'}} onClick={handlePasswordReset}>پاس ورڈ بھول گئے؟ (ریکوری)</p>
+              )}
             </div>
           </div>
         );
