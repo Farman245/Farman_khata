@@ -142,7 +142,6 @@
       
       const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
       
-      // یہ نئی سٹیٹ ہے جو یاد رکھے گی کہ کون سی کیٹگری (سپلائر) کھلی ہے اور کون سی بند
       const [expandedSup, setExpandedSup] = useState({});
 
       useEffect(() => {
@@ -258,7 +257,6 @@
 
       const filteredStock = stock.filter(s => s.name.includes(stockSearch) || s.supplier.includes(stockSearch));
       
-      // Stock Grouping Logic
       const groupedStock = {};
       filteredStock.forEach(s => {
         const sup = s.supplier || 'نامعلوم سپلائر';
@@ -266,7 +264,6 @@
         groupedStock[sup].push(s);
       });
       
-      // Toggle Supplier Category
       const toggleSup = (supName) => {
           setExpandedSup(prev => ({ ...prev, [supName]: !prev[supName] }));
       };
@@ -359,8 +356,8 @@
                         <div style={{display:'flex', gap:'5px', marginBottom:'10px'}} className="no-print">
                             <button className="btn btn-purple" style={{flex:1}} onClick={()=>window.print()}>پرنٹ لسٹ</button>
                             <button className="btn btn-blue" style={{flex:1}} onClick={()=>{
-                                const headers = ['آئٹم', 'سپلائر', 'آرڈر', 'موجود'];
-                                const data = filteredStock.map(s => [s.name, s.supplier, s.totalOrdered, s.qty]);
+                                const headers = ['آئٹم', 'سپلائر', 'آرڈر', 'موجود', 'ریٹ', 'کل رقم'];
+                                const data = filteredStock.map(s => [s.name, s.supplier, s.totalOrdered, s.qty, s.rate || 0, (s.qty || 0) * (s.rate || 0)]);
                                 exportToExcel(headers, data, 'Stock_List');
                             }}>ایکسل ڈاؤنلوڈ</button>
                         </div>
@@ -368,19 +365,18 @@
                         <input type="text" className="search-input" placeholder="تلاش کریں..." value={stockSearch} onChange={(e)=>setStockSearch(e.target.value)} />
                         <div className="card" style={{padding: '5px'}}>
                           <table>
-                            <thead><tr><th>آئٹم</th><th>آرڈر</th><th>موجود</th><th className="no-print">ایکشن</th></tr></thead>
+                            <thead><tr><th>آئٹم</th><th>آرڈر</th><th>موجود</th><th>ریٹ</th><th>کل رقم</th><th className="no-print">ایکشن</th></tr></thead>
                             <tbody>
                               {Object.keys(groupedStock).map((supName, index) => {
                                 const items = groupedStock[supName];
                                 const isExpanded = expandedSup[supName];
-                                // اگر سرچ ہو رہی ہو تو تمام دکھائیں، ورنہ کیٹگری کے لحاظ سے 2 دکھائیں
                                 const visibleItems = (isExpanded || stockSearch !== '') ? items : items.slice(0, 2);
                                 const hasMore = items.length > 2 && stockSearch === '';
 
                                 return (
                                   <React.Fragment key={index}>
                                     <tr>
-                                      <td colSpan="4" className="supplier-heading">
+                                      <td colSpan="6" className="supplier-heading">
                                         🛒 سپلائر: {supName}
                                       </td>
                                     </tr>
@@ -389,6 +385,8 @@
                                         <td><strong>{s.name}</strong></td>
                                         <td>{s.totalOrdered || 0}</td>
                                         <td>{s.qty || 0}</td>
+                                        <td>{s.rate || 0}</td>
+                                        <td>{(s.qty || 0) * (s.rate || 0)}</td>
                                         <td className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
                                           <button className="btn btn-green" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
                                           <button className="btn btn-orange" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
@@ -400,7 +398,7 @@
                                     ))}
                                     {hasMore && (
                                       <tr>
-                                        <td colSpan="4" style={{textAlign: 'center', backgroundColor: '#fafafa', padding: 0}}>
+                                        <td colSpan="6" style={{textAlign: 'center', backgroundColor: '#fafafa', padding: 0}}>
                                           <span style={{color: '#3498db', cursor: 'pointer', fontWeight: 'bold', padding: '12px', display: 'block'}} onClick={() => toggleSup(supName)}>
                                             {isExpanded ? '↑ کم دکھائیں' : `↓ مزید دیکھیں (${items.length - 2} اور)`}
                                           </span>
