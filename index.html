@@ -85,17 +85,19 @@
     input, select { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 100%; margin-top: 5px; margin-bottom: 10px; box-sizing: border-box; font-size: 14px; }
     .search-input { border: 2px solid #3498db; background-color: #f0f8ff; font-weight: bold; }
     .total-banner { background: #2ecc71; color: white; padding: 12px; border-radius: 10px; text-align: center; margin-bottom: 10px; font-weight: bold; }
-    table { width: 100%; text-align: right; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
-    th, td { padding: 10px; border-bottom: 1px solid #eee; }
+    
+    .table-container { overflow-x: auto; width: 100%; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; text-align: right; border-collapse: collapse; margin-top: 10px; font-size: 13px; min-width: 320px; }
+    th, td { padding: 8px 4px; border-bottom: 1px solid #eee; }
     .modal { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:1000; padding:10px; }
     
-    .supplier-heading { background-color: #eef2f3; color: #2c3e50; font-weight: bold; text-align: center; padding: 8px; font-size: 15px; }
+    .supplier-heading { background-color: #eef2f3; color: #2c3e50; font-weight: bold; text-align: center; padding: 8px; font-size: 14px; }
 
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; }
       .card { box-shadow: none !important; border: 1px solid #ccc !important; }
-      th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+      th, td { border: 1px solid #000; padding: 6px; text-align: center; }
       table { border: 1px solid #000; }
       .supplier-heading { background-color: #ddd !important; }
     }
@@ -363,9 +365,10 @@
                         </div>
                         
                         <input type="text" className="search-input" placeholder="تلاش کریں..." value={stockSearch} onChange={(e)=>setStockSearch(e.target.value)} />
-                        <div className="card" style={{padding: '5px'}}>
+                        
+                        <div className="card table-container" style={{padding: '5px'}}>
                           <table>
-                            <thead><tr><th>آئٹم</th><th>آرڈر</th><th>موجود</th><th>ریٹ</th><th>کل رقم</th><th className="no-print">ایکشن</th></tr></thead>
+                            <thead><tr><th>آئٹم</th><th>آرڈر</th><th>موجود</th><th>ریٹ</th><th>کل رقم</th><th className="no-print" style={{textAlign:'center'}}>ایکشن</th></tr></thead>
                             <tbody>
                               {Object.keys(groupedStock).map((supName, index) => {
                                 const items = groupedStock[supName];
@@ -387,13 +390,32 @@
                                         <td>{s.qty || 0}</td>
                                         <td>{s.rate || 0}</td>
                                         <td>{(s.qty || 0) * (s.rate || 0)}</td>
-                                        <td className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
-                                          <button className="btn btn-green" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'stockAction', actionType:'in', item:s})}>+</button>
-                                          <button className="btn btn-orange" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'stockAction', actionType:'out', item:s})}>-</button>
-                                          <button className="btn btn-blue" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'viewStockHistory', item:s})}>📋</button>
-                                          <button className="btn btn-gray" style={{padding:'6px 10px'}} onClick={()=>setModal({type:'editStock', item:s})}>✎</button>
-                                          <button className="btn btn-red" style={{padding:'6px 10px'}} onClick={()=>deleteRecord('stock', s.id)}>🗑</button>
+                                        
+                                        {/* Updated Smart Action Dropdown */}
+                                        <td className="no-print" style={{ verticalAlign: 'middle', width: '90px', padding: '5px 2px' }}>
+                                          <select 
+                                            className="search-input" 
+                                            style={{padding: '6px', width: '100%', fontSize: '13px', margin: 0, cursor: 'pointer', textAlign: 'center'}}
+                                            defaultValue=""
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if(val === 'in') setModal({type:'stockAction', actionType:'in', item:s});
+                                              else if(val === 'out') setModal({type:'stockAction', actionType:'out', item:s});
+                                              else if(val === 'history') setModal({type:'viewStockHistory', item:s});
+                                              else if(val === 'edit') setModal({type:'editStock', item:s});
+                                              else if(val === 'delete') deleteRecord('stock', s.id);
+                                              e.target.value = ''; 
+                                            }}
+                                          >
+                                            <option value="" disabled>ایکشن ▾</option>
+                                            <option value="in">➕ مال آیا</option>
+                                            <option value="out">➖ مال بکا</option>
+                                            <option value="history">📋 ہسٹری</option>
+                                            <option value="edit">✎ ایڈیٹ</option>
+                                            <option value="delete">🗑 ڈیلیٹ</option>
+                                          </select>
                                         </td>
+                                        
                                       </tr>
                                     ))}
                                     {hasMore && (
@@ -493,7 +515,7 @@
                             }}>ایکسل ڈاؤنلوڈ</button>
                         </div>
                         <input type="month" className="no-print" value={selectedMonth} onChange={(e)=>setSelectedMonth(e.target.value)} />
-                        <div className="card">
+                        <div className="card table-container">
                           <table><thead><tr><th>تاریخ</th><th>تفصیل</th><th>آمد</th><th>خرچ</th><th className="no-print">ایکشن</th></tr></thead><tbody>
                             {filteredCash.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(l => (
                               <tr key={l.id}>
@@ -594,7 +616,7 @@
                         }}>ایکسل ڈاؤنلوڈ</button>
                     </div>
                   </div>
-                  <div className="card">
+                  <div className="card table-container">
                     <table>
                       <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>ادا</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
@@ -636,7 +658,7 @@
 
                     <button className="btn btn-dark no-print" style={{width:'100%', marginTop:'10px'}} onClick={()=>toggleStuckStatus(viewingCust)}>{viewingCust.isStuck ? 'ایکٹو کریں' : 'رکے کھاتوں میں ڈالیں'}</button>
                   </div>
-                  <div className="card">
+                  <div className="card table-container">
                     <table>
                       <thead><tr><th>تاریخ</th><th>تفصیل</th><th>بل</th><th>وصولی</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
@@ -677,7 +699,7 @@
                     </div>
                   </div>
                   
-                  <div className="card">
+                  <div className="card table-container">
                     <table>
                       <thead><tr><th>تاریخ</th><th>تفصیل</th><th>آمد</th><th>خرچ</th><th className="no-print">ایکشن</th></tr></thead>
                       <tbody>
